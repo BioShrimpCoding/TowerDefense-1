@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Desktop Defender</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="ui">
+        <div class="stats-group">
+            <div>$: <span id="goldDisplay">200</span></div>
+            <div style="color: #ff4444;">❤: <span id="livesDisplay">20</span></div>
+            <div>Wave: <span id="waveDisplay">0</span></div>
+        </div>
+
+        <div class="shop-group">
+            <button onclick="setBuildType('PISTOL')">Pistol ($50)</button>
+            <button onclick="setBuildType('SNIPER')">Sniper ($150)</button>
+            <button onclick="setBuildType('MINIGUN')">Gatling ($200)</button>
+            <button onclick="setBuildType('BUFF')">Buff ($150)</button>
+        </div>
+
+        <div id="upgradeMenu">
+            <span>Lvl <span id="lvlDisplay">1</span></span>
+            <button id="targetBtn" onclick="cycleTargeting()" style="min-width: 80px;">First</button>
+            <button onclick="upgradeSpeed()">Speed</button>
+            <button onclick="upgradeDamage()">Power</button>
+            <button class="remove-btn" onclick="removeTower()">SELL</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" width="1000" height="520"></canvas>
+
+    <script src="game.js" defer></script>
+</body>
+</html>
