@@ -55,6 +55,13 @@ function playSFX(type) {
     gain.gain.setValueAtTime(0.01, now);
     gain.gain.linearRampToValueAtTime(0, now + 0.05);
     osc.start(now); osc.stop(now + 0.05);
+  } else if (type === 'railgun') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.start(now); osc.stop(now + 0.5);
   }
 }
 
@@ -89,7 +96,7 @@ const TOWER_TYPES = {
   SNIPER:  { color: '#2196F3', range: 350, reload: 100, damage: 15,   cost: 150, bullet: 'white'  },
   MINIGUN: { color: '#FF9800', range: 120, reload: 6,   damage: 2,    cost: 300, bullet: 'yellow' },
   FLAME:   { color: '#FF5722', range: 100, reload: 15,  damage: 1,    cost: 175, bullet: 'red',     isFlame: true },
-  ICE:     { color: '#29b6f6', range: 130, reload: 50,  damage: 0.5,  cost: 125, bullet: '#b3e5fc', isIce:   true },
+  ICE:     { color: '#29b6f6', range: 130, reload: 150, damage: 0.5,  cost: 125, bullet: '#b3e5fc', isIce:   true }, // Ice Nerfed Reload
   BOMB:    { color: '#555555', range: 140, reload: 90,  damage: 10,   cost: 200, bullet: 'black',   splashRadius: 70 },
   ACCEL:   { color: '#E040FB', range: 180, reload: 120, damage: 12,   cost: 500, bullet: 'none',    isAccel: true, duration: 300 },
   BUFF:    { color: '#FFD700', range: 120, reload: 0,   damage: 0,    cost: 150, isBuff: true },
@@ -555,6 +562,11 @@ class Tower {
     // Farm Specifics
     this.income = TOWER_TYPES[typeKey].baseIncome || 0;
     this.totalGenerated = 0;
+
+    // Hitscan Railgun Visuals
+    this.railFireTimer = 0;
+    this.beamEndX = 0;
+    this.beamEndY = 0;
   }
 
   applyBuffs(allTowers) {
@@ -567,13 +579,19 @@ class Tower {
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
 
     let speedMod = 1, dmgMod = 1, rangeMod = 0;
+    let hasAppliedStatsBuff = false; // BUFF NERF: Only one buff applies
 
     allTowers.forEach(t => {
       if (TOWER_TYPES[t.type].isBuff && Math.hypot(this.x - t.x, this.y - t.y) <= t.range) {
-        this.hasSpotter = true; // Railgun synergy
-        if (t.buffSpec === 'SPEED')  speedMod *= Math.max(0.1, 0.7 - (t.upgrades.speed  * 0.1));
-        if (t.buffSpec === 'DAMAGE') dmgMod   *= 1.4 + (t.upgrades.damage * 0.4);
-        if (t.buffSpec === 'RANGE')  rangeMod += 30   + (t.upgrades.range  * 20);
+        this.hasSpotter = true; // Spotting works from any buff tower
+        
+        if (!hasAppliedStatsBuff) {
+          // BUFF NERF: Reduced effectiveness 
+          if (t.buffSpec === 'SPEED')  speedMod *= Math.max(0.2, 0.85 - (t.upgrades.speed  * 0.05));
+          if (t.buffSpec === 'DAMAGE') dmgMod   *= 1.2 + (t.upgrades.damage * 0.2);
+          if (t.buffSpec === 'RANGE')  rangeMod += 15 + (t.upgrades.range  * 15);
+          hasAppliedStatsBuff = true; 
+        }
       }
     });
 
@@ -585,6 +603,18 @@ class Tower {
   update() {
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
     if (this.isRail && !this.hasSpotter) return; // Railgun requires signal
+    
+    // --- ICE AURA LOGIC (Passive immediate slow) ---
+    if (TOWER_TYPES[this.type].isIce) {
+      enemies.forEach(e => {
+        const hasRadar = this.upgrades.radar > 0;
+        if ((e.isCamo || e.isFlying) && !hasRadar) return;
+        if (Math.hypot(e.x - this.x, e.y - this.y) <= this.range) {
+          e.slowTicks = Math.max(e.slowTicks, 10); // Keep slow active immediately
+          e.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
+        }
+      });
+    }
 
     // --- ACCELERATOR BEAM LOGIC ---
     if (TOWER_TYPES[this.type].isAccel) {
@@ -606,6 +636,7 @@ class Tower {
           else if (this.targetMode === 'Last')     inRange.sort((a, b) => a.pathIndex - b.pathIndex);
           else if (this.targetMode === 'Strongest')inRange.sort((a, b) => b.health    - a.health);
           else if (this.targetMode === 'Weakest')  inRange.sort((a, b) => a.health    - b.health);
+          else if (this.targetMode === 'Random')   inRange.sort(() => Math.random() - 0.5);
           
           this.currentTarget = inRange[0]; 
           
@@ -651,14 +682,40 @@ class Tower {
         else if (this.targetMode === 'Last')     inRange.sort((a, b) => a.pathIndex - b.pathIndex);
         else if (this.targetMode === 'Strongest')inRange.sort((a, b) => b.health    - a.health);
         else if (this.targetMode === 'Weakest')  inRange.sort((a, b) => a.health    - b.health);
+        else if (this.targetMode === 'Random')   inRange.sort(() => Math.random() - 0.5);
 
         const target = inRange[0];
-        projectiles.push(new Projectile(this.x, this.y, target, this)); 
-        
-        if(this.type === 'SNIPER' || this.isRail) playSFX('sniper');
-        else playSFX('shoot');
-        
-        this.timer = 0;
+
+        if (this.isRail) {
+            // HITSCAN RAILGUN
+            playSFX('railgun');
+            const angle = Math.atan2(target.y - this.y, target.x - this.x);
+            this.beamEndX = this.x + Math.cos(angle) * this.range;
+            this.beamEndY = this.y + Math.sin(angle) * this.range;
+            this.railFireTimer = 10; // Frames to draw the beam
+
+            // Instantly damage enemies along the path (Piercing Hitscan)
+            enemies.forEach(e => {
+                // Check distance from enemy center to the laser line segment
+                const distToLine = Math.abs((this.beamEndY - this.y)*e.x - (this.beamEndX - this.x)*e.y + this.beamEndX*this.y - this.beamEndY*this.x) / this.range;
+                
+                // Ensure enemy is in the "forward" direction of the beam
+                const dotProduct = (e.x - this.x)*(this.beamEndX - this.x) + (e.y - this.y)*(this.beamEndY - this.y);
+                
+                // If enemy is close to the beam line, in front of tower, and within range
+                if (distToLine < 25 && dotProduct > 0 && Math.hypot(e.x - this.x, e.y - this.y) <= this.range + 25) {
+                    const dealt = e.takeDamage(this.damage);
+                    this.damageDealt += dealt;
+                    spawnParticles(e.x, e.y, '#00FFFF', 6);
+                }
+            });
+            this.timer = 0;
+        } else {
+            // Standard projectiles
+            projectiles.push(new Projectile(this.x, this.y, target, this)); 
+            if(this.type === 'SNIPER') playSFX('sniper'); else playSFX('shoot');
+            this.timer = 0;
+        }
       }
     }
   }
@@ -669,6 +726,7 @@ class Tower {
       ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke();
     }
     
+    // Draw Accelerator Beam
     if (this.type === 'ACCEL' && this.fireTimer > 0 && this.currentTarget && this.currentTarget.alive) {
       ctx.strokeStyle = '#E040FB';
       ctx.lineWidth = Math.random() * 4 + 2; 
@@ -680,6 +738,22 @@ class Tower {
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 2;
       ctx.stroke();
+    }
+
+    // Draw Hitscan Railgun Beam
+    if (this.isRail && this.railFireTimer > 0) {
+      ctx.strokeStyle = '#00FFFF';
+      ctx.lineWidth = Math.random() * 6 + 2; 
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.beamEndX, this.beamEndY);
+      ctx.stroke();
+      
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      this.railFireTimer--;
     }
     
     ctx.fillStyle = (this.isRail && !this.hasSpotter) ? '#444' : this.color;
@@ -708,17 +782,15 @@ class Projectile {
     this.target    = target;
     this.tower     = tower; 
     
-    this.isRail       = tower.isRail; // Railgun Property
     this.damage       = tower.damage;
     this.color        = TOWER_TYPES[tower.type].bullet;
-    this.speed        = this.isRail ? 18 : (tower.type === 'BOMB' ? 4 : 8); 
+    this.speed        = (tower.type === 'BOMB' ? 4 : 8); 
     this.alive        = true;
     this.isFlame      = !!TOWER_TYPES[tower.type].isFlame;
     this.meltLevel    = tower.meltLevel;
     this.isIce        = !!TOWER_TYPES[tower.type].isIce;
     this.slowLevel    = tower.slowLevel;
     this.splashRadius = TOWER_TYPES[tower.type].splashRadius || 0;
-    this.hitList      = new Set();
   }
 
   update() {
@@ -726,52 +798,40 @@ class Projectile {
     const dy   = this.target.y - this.y;
     const dist = Math.hypot(dx, dy);
 
-    if (this.isRail) {
-        // Piercing logic
-        enemies.forEach(e => {
-            if (!this.hitList.has(e) && Math.hypot(e.x - this.x, e.y - this.y) < 25) {
-                const dealt = e.takeDamage(this.damage);
-                this.tower.damageDealt += dealt;
-                this.hitList.add(e);
-                spawnParticles(e.x, e.y, this.color, 6);
+    if (dist < 5 || !this.target.alive) {
+        if (this.splashRadius > 0) {
+          playSFX('explosion');
+          spawnParticles(this.x, this.y, '#FF5722', 25, 2.0); 
+          
+          enemies.forEach(e => {
+            if (Math.hypot(e.x - this.x, e.y - this.y) <= this.splashRadius) {
+              const hasRadar = this.tower.type === 'SNIPER' || this.tower.upgrades.radar > 0;
+              if (e.isFlying && !hasRadar) return; 
+  
+              const dealt = e.takeDamage(this.damage);
+              this.tower.damageDealt += dealt; 
             }
-        });
-        if (dist < 10) this.alive = false;
-    } else {
-        if (dist < 5 || !this.target.alive) {
-            if (this.splashRadius > 0) {
-              playSFX('explosion');
-              spawnParticles(this.x, this.y, '#FF5722', 25, 2.0); 
-              
-              enemies.forEach(e => {
-                if (Math.hypot(e.x - this.x, e.y - this.y) <= this.splashRadius) {
-                  const hasRadar = this.tower.type === 'SNIPER' || this.tower.upgrades.radar > 0;
-                  if (e.isFlying && !hasRadar) return; 
-      
-                  const dealt = e.takeDamage(this.damage);
-                  this.tower.damageDealt += dealt; 
-                }
-              });
-            } else {
-              if (this.target.alive) {
-                playSFX('hit');
-                spawnParticles(this.target.x, this.target.y, this.color, 4);
-                
-                if (this.isFlame) {
-                  this.target.meltTicks = 180;
-                  this.target.armor = Math.max(0, this.target.armor - (0.2 + this.meltLevel * 0.3));
-                }
-                if (this.isIce) {
-                  this.target.slowTicks  = 90 + this.slowLevel * 30;
-                  this.target.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
-                }
-                
-                const dealt = this.target.takeDamage(this.damage);
-                this.tower.damageDealt += dealt; 
-              }
+          });
+        } else {
+          if (this.target.alive) {
+            playSFX('hit');
+            spawnParticles(this.target.x, this.target.y, this.color, 4);
+            
+            if (this.isFlame) {
+              this.target.meltTicks = 180;
+              this.target.armor = Math.max(0, this.target.armor - (0.2 + this.meltLevel * 0.3));
             }
-            this.alive = false;
+            if (this.isIce) {
+              // Lingering slow from the actual projectile hit
+              this.target.slowTicks  = 90 + this.slowLevel * 30;
+              this.target.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
+            }
+            
+            const dealt = this.target.takeDamage(this.damage);
+            this.tower.damageDealt += dealt; 
+          }
         }
+        this.alive = false;
     }
     
     this.x += (dx / dist) * this.speed;
@@ -780,15 +840,9 @@ class Projectile {
 
   draw() {
     ctx.fillStyle = this.color;
-    if (this.isRail) {
-        ctx.shadowBlur = 10; ctx.shadowColor = this.color;
-        ctx.fillRect(this.x - 4, this.y - 4, 8, 8);
-        ctx.shadowBlur = 0;
-    } else {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.splashRadius ? 6 : (this.isIce ? 5 : 4), 0, Math.PI * 2);
-        ctx.fill();
-    }
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.splashRadius ? 6 : (this.isIce ? 5 : 4), 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -949,7 +1003,7 @@ window.setBuffSpec = type => {
 
 window.cycleTargeting = () => {
   if (!selectedTower) return;
-  const modes = ['First', 'Last', 'Strongest', 'Weakest'];
+  const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random']; // Added Random
   selectedTower.targetMode = modes[(modes.indexOf(selectedTower.targetMode) + 1) % modes.length];
   updateSelectionUI();
 };
