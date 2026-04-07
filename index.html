@@ -8,34 +8,47 @@
 </head>
 <body>
 
-<div id="game-root">
+<div id="mainMenu">
+  <h1 style="color:#2196F3; font-size:42px; margin-bottom: 10px;">DESKTOP DEFENDER</h1>
+  <h3 style="color:#aaa; margin-bottom: 30px;">Select a Mission Location</h3>
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <button class="sys-btn menu-btn" onclick="startGame(0)">Map 1: Sandbox (Random Path)</button>
+    <button class="sys-btn menu-btn" onclick="startGame(1)">Map 2: The S-Curve (Set Path)</button>
+    <button class="sys-btn menu-btn" onclick="startGame(2)">Map 3: The Spiral (Set Path)</button>
+    <button class="sys-btn menu-btn" onclick="startGame(3)">Map 4: River Run (Set Path)</button>
+    <button class="sys-btn menu-btn" onclick="startGame(4)">Map 5: The Maze (Set Path)</button>
+  </div>
+</div>
+
+<div id="game-root" style="display:none;">
   <div id="ui">
     <div class="stats-group">
-      <div style="color:#ffd700;">$<span id="goldDisplay">2000</span></div>
-      <div style="color:#ff4444;">❤<span id="livesDisplay">20</span></div>
-      <div>Wave <span id="waveDisplay">0</span></div>
-      <div style="color:#aaa;font-size:11px;" id="interestDisplay"></div>
-      <div style="display:flex;gap:4px;margin-left:4px;">
+      <div style="color:#ffd700;">$<br><span id="goldDisplay">250</span></div>
+      <div style="color:#ff4444;">❤<br><span id="livesDisplay">20</span></div>
+      <div>WAVE<br><span id="waveDisplay">0</span></div>
+      <div style="display:flex; gap:4px; margin-left:4px; width: auto;">
         <button id="pauseBtn" class="sys-btn" onclick="togglePause()">PAUSE</button>
         <button id="speedBtn" class="sys-btn" onclick="toggleSpeed()">1×</button>
         <button id="muteBtn" class="sys-btn" onclick="toggleMute()">🎵 PLAY MUSIC</button>
         <button class="sys-btn remove-btn" onclick="restartGame()">RESTART</button>
+        <button class="sys-btn" onclick="returnToMenu()">MAPS</button>
       </div>
     </div>
     <div class="shop-group">
-      <button id="btn_PISTOL" onclick="setBuildType('PISTOL')">Pistol $50</button>
-      <button id="btn_SNIPER" onclick="setBuildType('SNIPER')">Sniper $150</button>
-      <button id="btn_MINIGUN" onclick="setBuildType('MINIGUN')">Gatling $300</button>
-      <button id="btn_FLAME" onclick="setBuildType('FLAME')">Flame $175</button>
-      <button id="btn_ICE" onclick="setBuildType('ICE')" class="ice-btn">Ice $125</button>
-      <button id="btn_BOMB" onclick="setBuildType('BOMB')">Artillery $200</button>
-      <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn">Accel $500</button>
-      <button id="btn_BUFF" onclick="setBuildType('BUFF')">Buff $150</button>
-      <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;">Railgun $800</button>
-      <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn">Farm $250</button>
+      <button id="btn_PISTOL" onclick="setBuildType('PISTOL')">Pistol<br>$50</button>
+      <button id="btn_SNIPER" onclick="setBuildType('SNIPER')">Sniper<br>$150</button>
+      <button id="btn_MINIGUN" onclick="setBuildType('MINIGUN')">Gatling<br>$300</button>
+      <button id="btn_FLAME" onclick="setBuildType('FLAME')">Flame<br>$175</button>
+      <button id="btn_ICE" onclick="setBuildType('ICE')" class="ice-btn">Ice<br>$125</button>
+      <button id="btn_BOMB" onclick="setBuildType('BOMB')">Artillery<br>$200</button>
+      <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn">Accel<br>$500</button>
+      <button id="btn_BUFF" onclick="setBuildType('BUFF')">Buff<br>$150</button>
+      <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;">Railgun<br>$800</button>
+      <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn">Farm<br>$250</button>
     </div>
+    
     <div id="upgradeMenu">
-      <button id="targetBtn" onclick="cycleTargeting()">First</button>
+      <button id="targetBtn" onclick="cycleTargeting()" style="width: 70px;">First</button>
       
       <div id="standardUpgrades" style="display:flex;gap:4px;">
         <button id="btnUpgradeSpeed" onclick="upgradeSpeed()">Speed</button>
@@ -72,11 +85,12 @@
 
   <div id="gameArea">
     <div id="canvasWrapper">
-      <canvas id="gameCanvas" width="800" height="480"></canvas>
-      <canvas id="pathPreviewCanvas" width="800" height="480"></canvas>
+      <canvas id="gameCanvas"></canvas>
+      <canvas id="pathPreviewCanvas"></canvas>
     </div>
     <div id="sideMenu">
       <div id="statsContent"></div>
+      <div id="interestDisplay" style="color:#aaa; font-size:11px; text-align:center; margin-top:5px;"></div>
       <div id="researchMenu">
         <h4 style="color:#ffd700; margin-bottom:5px;">RESEARCH</h4>
         <button onclick="buyResearch('bounty')" id="res_bounty">Bounty Hunter $500</button>

@@ -8,59 +8,176 @@ const pCanvas = document.getElementById('pathPreviewCanvas');
 const pCtx    = pCanvas.getContext('2d');
 
 const TILE_SIZE = 40;
-const COLS = Math.floor(canvas.width  / TILE_SIZE);   // 20
-const ROWS = Math.floor(canvas.height / TILE_SIZE);   // 12
+let COLS = 20;
+let ROWS = 12;
 
-// ── Audio Setup (BGM & Synthesizer SFX) ────────
+// ── Map Definitions ────────────────────────────
+const MAP_DATA = [
+  {
+    name: "Map 1: Sandbox", type: "RANDOM",
+    cols: 20, rows: 12,
+    start: { x: 0, y: 6 }, end: { x: 19, y: 6 },
+    layout: [] 
+  },
+  {
+    name: "Map 2: The S-Curve", type: "FIXED",
+    cols: 20, rows: 12,
+    layout: [
+      "00000000000000000000",
+      "S1111111110000000000",
+      "00000000010000000000",
+      "00000000011111111100",
+      "00000000000000000100",
+      "00111111111111111100",
+      "00100000000000000000",
+      "0011111111111111111E",
+      "00000000000000000000",
+      "00000000000000000000",
+      "00000000000000000000",
+      "00000000000000000000"
+    ]
+  },
+  {
+    name: "Map 3: The Spiral", type: "FIXED",
+    cols: 16, rows: 12,
+    layout: [
+      "S111111111111110",
+      "0000000000000010",
+      "0111111111110010",
+      "0100000000010010",
+      "0101111110010010",
+      "0101000010010010",
+      "010100E110010010",
+      "0101000000010010",
+      "0101111111110010",
+      "0100000000000010",
+      "0111111111111110",
+      "0000000000000000"
+    ]
+  },
+  {
+    name: "Map 4: River Run", type: "FIXED",
+    cols: 24, rows: 10,
+    layout: [
+      "S11000000000111000000000",
+      "001100000001101100000000",
+      "000110000011000110000000",
+      "000011000110000011000000",
+      "000001101100000001100000",
+      "000000111000000000110000",
+      "000000000000000000011000",
+      "000000000000000000001100",
+      "00000000000000000000011E",
+      "000000000000000000000000"
+    ]
+  },
+  {
+    name: "Map 5: The Maze", type: "FIXED",
+    cols: 18, rows: 14,
+    layout: [
+      "S00000000000000000",
+      "101111111111111110",
+      "101000000000000010",
+      "101011111111111010",
+      "101010000000001010",
+      "101010111111101010",
+      "101010100000101010",
+      "1010101011E0101010",
+      "101010100000101010",
+      "101010111111101010",
+      "101010000000001010",
+      "101011111111111010",
+      "101000000000000010",
+      "111111111111111110"
+    ]
+  }
+];
+
+let currentMapIndex = 0;
+let startPos = { x: 0, y: 6 };
+let endPos   = { x: 19, y: 6 };
+
+function setupMap(mapData) {
+    if (mapData.type === "RANDOM") {
+        startPos = mapData.start;
+        endPos = mapData.end;
+        return;
+    }
+    
+    let s, e;
+    let rows = mapData.layout.length;
+    let cols = mapData.layout[0].length;
+    for(let y=0; y<rows; y++){
+        for(let x=0; x<cols; x++){
+            if(mapData.layout[y][x]==='S') s = {x,y};
+            if(mapData.layout[y][x]==='E') e = {x,y};
+        }
+    }
+    startPos = s; endPos = e;
+
+    let q = [[s.x, s.y, []]];
+    let vis = new Set([`${s.x},${s.y}`]);
+    
+    while(q.length > 0) {
+        let [x, y, path] = q.shift();
+        let cur = [...path, {x,y}];
+        if (x===e.x && y===e.y) {
+            mapData.fixedPath = cur;
+            return;
+        }
+        let neighbors = [
+            {x:x+1,y}, {x:x-1,y}, {x,y:y+1}, {x,y:y-1},
+            {x:x+1,y:y+1}, {x:x+1,y:y-1}, {x:x-1,y:y+1}, {x:x-1,y:y-1}
+        ];
+        for(let n of neighbors) {
+            if (n.x>=0 && n.x<cols && n.y>=0 && n.y<rows) {
+                let char = mapData.layout[n.y][n.x];
+                if ((char === '1' || char === 'E') && !vis.has(`${n.x},${n.y}`)) {
+                    vis.add(`${n.x},${n.y}`);
+                    q.push([n.x, n.y, cur]);
+                }
+            }
+        }
+    }
+    mapData.fixedPath = []; 
+}
+
+// ── Audio Setup ────────
 const bgMusic = new Audio('bgm.mp3');
-bgMusic.loop = true;
-bgMusic.volume = 0.3;
-let isMusicPlaying = false;
-let audioCtx = null;
+bgMusic.loop = true; bgMusic.volume = 0.3;
+let isMusicPlaying = false; let audioCtx = null;
 
 function playSFX(type) {
   if (!isMusicPlaying) return; 
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
+  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
   osc.connect(gain); gain.connect(audioCtx.destination);
   const now = audioCtx.currentTime;
   
   if (type === 'shoot') {
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(400, now);
+    osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
     osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-    gain.gain.setValueAtTime(0.02, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    gain.gain.setValueAtTime(0.02, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
     osc.start(now); osc.stop(now + 0.1);
   } else if (type === 'sniper') {
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, now);
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now);
     osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
     osc.start(now); osc.stop(now + 0.3);
   } else if (type === 'explosion') {
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(100, now);
+    osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
     osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     osc.start(now); osc.stop(now + 0.4);
   } else if (type === 'hit') {
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(300, now);
+    osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now);
     osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
-    gain.gain.setValueAtTime(0.01, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.05);
+    gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0, now + 0.05);
     osc.start(now); osc.stop(now + 0.05);
   } else if (type === 'railgun') {
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(800, now);
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(800, now);
     osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
     osc.start(now); osc.stop(now + 0.5);
   }
 }
@@ -72,17 +189,13 @@ class Particle {
     this.x = x; this.y = y; this.color = color;
     const angle = Math.random() * Math.PI * 2;
     const speed = (Math.random() * 2 + 1) * speedScale;
-    this.vx = Math.cos(angle) * speed;
-    this.vy = Math.sin(angle) * speed;
-    this.life = 1.0;
-    this.decay = Math.random() * 0.05 + 0.02;
+    this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+    this.life = 1.0; this.decay = Math.random() * 0.05 + 0.02;
   }
   update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
   draw() {
-    ctx.globalAlpha = Math.max(0, this.life);
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, 3, 3);
-    ctx.globalAlpha = 1.0;
+    ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, 3, 3); ctx.globalAlpha = 1.0;
   }
 }
 function spawnParticles(x, y, color, count, speedScale = 1) {
@@ -90,13 +203,12 @@ function spawnParticles(x, y, color, count, speedScale = 1) {
 }
 
 // ── Tower & Enemy definitions ──────────────────
-
 const TOWER_TYPES = {
   PISTOL:  { color: '#4CAF50', range: 150, reload: 40,  damage: 2,    cost: 50,  bullet: 'orange' },
   SNIPER:  { color: '#2196F3', range: 350, reload: 100, damage: 15,   cost: 150, bullet: 'white'  },
   MINIGUN: { color: '#FF9800', range: 120, reload: 6,   damage: 2,    cost: 300, bullet: 'yellow' },
   FLAME:   { color: '#FF5722', range: 100, reload: 15,  damage: 1,    cost: 175, bullet: 'red',     isFlame: true },
-  ICE:     { color: '#29b6f6', range: 130, reload: 150, damage: 0.5,  cost: 125, bullet: '#b3e5fc', isIce:   true }, // Ice Nerfed Reload
+  ICE:     { color: '#29b6f6', range: 130, reload: 150, damage: 0.5,  cost: 125, bullet: '#b3e5fc', isIce:   true }, 
   BOMB:    { color: '#555555', range: 140, reload: 90,  damage: 10,   cost: 200, bullet: 'black',   splashRadius: 70 },
   ACCEL:   { color: '#E040FB', range: 180, reload: 120, damage: 12,   cost: 500, bullet: 'none',    isAccel: true, duration: 300 },
   BUFF:    { color: '#FFD700', range: 120, reload: 0,   damage: 0,    cost: 150, isBuff: true },
@@ -121,7 +233,6 @@ const WAVE_COLORS = {
 };
 
 // ── Game state ─────────────────────────────────
-
 let gold = 250, lives = 20, waveNumber = 0, buildType = null;
 let selectedTower = null, selectedEnemy = null;
 let enemiesLeftToSpawn = 0, spawnTimer = 0, waveCooldown = 0;
@@ -129,53 +240,35 @@ let isPaused = false, isWaveActive = false, gameSpeed = 1;
 let hoverGx = -1, hoverGy = -1;
 let frameCount = 0;
 
-// Farm Upgrades Config
 const FARM_UPGRADE_COSTS = [0, 200, 400, 700, 1200];
 const FARM_INCOME_LEVELS = [50, 100, 200, 350, 500];
 
-// Research State
-let research = {
-  bounty: 0,
-  piercing: 0,
-  interest: 0.01
-};
+let research = { bounty: 0, piercing: 0, interest: 0.01 };
 
-const startPos = { x: 0,        y: Math.floor(ROWS / 2) };
-const endPos   = { x: COLS - 1, y: Math.floor(ROWS / 2) };
-
-let grid        = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-let enemies     = [];
-let towers      = [];
+let grid = [];
+let enemies = [];
+let towers = [];
 let projectiles = [];
 
 // ── Pathfinding ────
-
 function findPath(startX = startPos.x, startY = startPos.y) {
-  const queue   = [[startX, startY, []]];
+  const queue = [[startX, startY, []]];
   const visited = new Set([`${startX},${startY}`]);
 
   while (queue.length > 0) {
     const randomIndex = Math.floor(Math.random() * queue.length);
     const [x, y, path] = queue.splice(randomIndex, 1)[0];
-    
     const cur = [...path, { x, y }];
     if (x === endPos.x && y === endPos.y) return cur;
 
     const neighbors = [
-      { x: x + 1, y }, { x: x - 1, y }, 
-      { x, y: y + 1 }, { x, y: y - 1 }
+      { x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }
     ].sort(() => Math.random() - 0.5);
 
     for (const n of neighbors) {
       const k = `${n.x},${n.y}`;
-      if (
-        n.x >= 0 && n.x < COLS &&
-        n.y >= 0 && n.y < ROWS &&
-        grid[n.y][n.x] === 0 &&
-        !visited.has(k)
-      ) {
-        visited.add(k);
-        queue.push([n.x, n.y, cur]);
+      if (n.x >= 0 && n.x < COLS && n.y >= 0 && n.y < ROWS && grid[n.y][n.x] === 0 && !visited.has(k)) {
+        visited.add(k); queue.push([n.x, n.y, cur]);
       }
     }
   }
@@ -191,8 +284,6 @@ function recalculateAllPaths() {
     if (p) { e.path = p; e.pathIndex = 0; }
   });
 }
-
-// ── Wave composition helper ────────────────────
 
 function getWaveComposition(wNum) {
   if (wNum % 10 === 0 && wNum > 0) return { BOSS: 1 };
@@ -225,7 +316,6 @@ function updateWavePreview() {
 }
 
 // ── Selection UI ───────────────────────────────
-
 function updateSelectionUI() {
   const side = document.getElementById('statsContent');
 
@@ -235,7 +325,6 @@ function updateSelectionUI() {
     return;
   }
 
-  // Enemy stats
   if (selectedEnemy) {
     document.getElementById('upgradeMenu').style.display = 'none';
     let h = `
@@ -253,7 +342,6 @@ function updateSelectionUI() {
     return;
   }
 
-  // Tower stats
   document.getElementById('upgradeMenu').style.display = 'flex';
   document.getElementById('targetBtn').innerText = selectedTower.targetMode;
 
@@ -289,7 +377,6 @@ function updateSelectionUI() {
       }
   }
 
-  // Radar Button Management
   const btnRadar = document.getElementById('btnUpgradeRadar');
   if (btnRadar) {
       if (isBuff || isFarm) {
@@ -297,14 +384,11 @@ function updateSelectionUI() {
       } else {
         btnRadar.style.display = 'inline-block';
         if (selectedTower.type === 'SNIPER') {
-          btnRadar.innerText = 'Radar (Native)';
-          btnRadar.style.opacity = '0.5';
+          btnRadar.innerText = 'Radar (Native)'; btnRadar.style.opacity = '0.5';
         } else if (selectedTower.upgrades.radar > 0) {
-          btnRadar.innerText = 'Radar (MAX)';
-          btnRadar.style.opacity = '0.5';
+          btnRadar.innerText = 'Radar (MAX)'; btnRadar.style.opacity = '0.5';
         } else {
-          btnRadar.innerText = 'Radar $150';
-          btnRadar.style.opacity = '1';
+          btnRadar.innerText = 'Radar $150'; btnRadar.style.opacity = '1';
         }
       }
   }
@@ -341,7 +425,6 @@ function updateSelectionUI() {
   }
   
   const sellVal = Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2);
-
   const hasRadar = selectedTower.type === 'SNIPER' || selectedTower.upgrades.radar > 0;
   const radarStr = hasRadar ? `<span style="color:#00E676;">Active</span>` : `<span style="color:#aaa;">None</span>`;
 
@@ -363,10 +446,10 @@ function updateSelectionUI() {
       <div class="stat-row"><span>Buff:</span><span style="color:#FFD700;">${selectedTower.buffSpec}</span></div>
     `;
   } else if (isAccel) {
-    const dmgCol = selectedTower.damage      > selectedTower.baseDamage  ? '#FFD700' : 'white';
-    const rngCol = selectedTower.range       > selectedTower.baseRange   ? '#FFD700' : 'white';
-    const spdCol = selectedTower.reloadTime  < selectedTower.baseReload  ? '#FFD700' : 'white';
-    const durCol = selectedTower.duration    > selectedTower.baseDuration ? '#FFD700': 'white';
+    const dmgCol = selectedTower.damage > selectedTower.baseDamage ? '#FFD700' : 'white';
+    const rngCol = selectedTower.range > selectedTower.baseRange ? '#FFD700' : 'white';
+    const spdCol = selectedTower.reloadTime < selectedTower.baseReload ? '#FFD700' : 'white';
+    const durCol = selectedTower.duration > selectedTower.baseDuration ? '#FFD700': 'white';
     h += `
       <div class="stat-row"><span>Damage:</span><span style="color:${dmgCol};">${selectedTower.damage.toFixed(1)}/tick</span></div>
       <div class="stat-row"><span>Range:</span><span style="color:${rngCol};">${selectedTower.range}</span></div>
@@ -379,10 +462,10 @@ function updateSelectionUI() {
     if (isRail && !selectedTower.hasSpotter) {
         h += `<div style="color:#ff4444; font-weight:bold; text-align:center;">OFFLINE: NEEDS SPOTTER</div>`;
     }
-    const aps    = (60 / selectedTower.reloadTime).toFixed(1);
-    const dmgCol = selectedTower.damage      > selectedTower.baseDamage  ? '#FFD700' : 'white';
-    const rngCol = selectedTower.range       > selectedTower.baseRange   ? '#FFD700' : 'white';
-    const spdCol = selectedTower.reloadTime  < selectedTower.baseReload  ? '#FFD700' : 'white';
+    const aps = (60 / selectedTower.reloadTime).toFixed(1);
+    const dmgCol = selectedTower.damage > selectedTower.baseDamage ? '#FFD700' : 'white';
+    const rngCol = selectedTower.range > selectedTower.baseRange ? '#FFD700' : 'white';
+    const spdCol = selectedTower.reloadTime < selectedTower.baseReload ? '#FFD700' : 'white';
     h += `
       <div class="stat-row"><span>Damage:</span><span style="color:${dmgCol};">${selectedTower.damage.toFixed(1)}</span></div>
       <div class="stat-row"><span>Range:</span><span style="color:${rngCol};">${selectedTower.range}</span></div>
@@ -472,7 +555,7 @@ class Enemy {
 
     if (this.health <= 0) { 
       this.alive = false; 
-      gold += this.reward + research.bounty; // Research Bounty Added
+      gold += this.reward + research.bounty; 
       spawnParticles(this.x, this.y, this.color, 15, 1.5); 
       
       if (this.spawns) {
@@ -488,7 +571,7 @@ class Enemy {
   }
 
   takeDamage(dmg) {
-    const effectiveArmor = Math.max(0, this.armor - research.piercing); // Research Piercing Added
+    const effectiveArmor = Math.max(0, this.armor - research.piercing);
     const actualDmg = Math.max(0.5, dmg - effectiveArmor);
     this.health -= actualDmg;
     return actualDmg;
@@ -516,10 +599,8 @@ class Enemy {
       ctx.arc(this.x, this.y, this.type === 'BOSS' ? 20 : 14, 0, Math.PI * 2); ctx.stroke();
     }
 
-    ctx.fillStyle = 'red';
-    ctx.fillRect(this.x - 15, this.y - 22, 30, 4);
-    ctx.fillStyle = 'lime';
-    ctx.fillRect(this.x - 15, this.y - 22, (this.health / this.maxHealth) * 30, 4);
+    ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 22, 30, 4);
+    ctx.fillStyle = 'lime'; ctx.fillRect(this.x - 15, this.y - 22, (this.health / this.maxHealth) * 30, 4);
   }
 }
 
@@ -559,11 +640,9 @@ class Tower {
     this.isFarm     = !!TOWER_TYPES[typeKey].isFarm;
     this.hasSpotter = false;
     
-    // Farm Specifics
     this.income = TOWER_TYPES[typeKey].baseIncome || 0;
     this.totalGenerated = 0;
 
-    // Hitscan Railgun Visuals
     this.railFireTimer = 0;
     this.beamEndX = 0;
     this.beamEndY = 0;
@@ -579,18 +658,17 @@ class Tower {
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
 
     let speedMod = 1, dmgMod = 1, rangeMod = 0;
-    let hasAppliedStatsBuff = false; // BUFF NERF: Only one buff applies
+    let hasAppliedStatsBuff = false;
 
     allTowers.forEach(t => {
       if (TOWER_TYPES[t.type].isBuff && Math.hypot(this.x - t.x, this.y - t.y) <= t.range) {
-        this.hasSpotter = true; // Spotting works from any buff tower
+        this.hasSpotter = true; 
         
         if (!hasAppliedStatsBuff) {
-          // BUFF NERF: Reduced effectiveness 
-          if (t.buffSpec === 'SPEED')  speedMod *= Math.max(0.2, 0.85 - (t.upgrades.speed  * 0.05));
-          if (t.buffSpec === 'DAMAGE') dmgMod   *= 1.2 + (t.upgrades.damage * 0.2);
-          if (t.buffSpec === 'RANGE')  rangeMod += 15 + (t.upgrades.range  * 15);
-          hasAppliedStatsBuff = true; 
+            if (t.buffSpec === 'SPEED')  speedMod *= Math.max(0.2, 0.85 - (t.upgrades.speed  * 0.05));
+            if (t.buffSpec === 'DAMAGE') dmgMod   *= 1.2 + (t.upgrades.damage * 0.2);
+            if (t.buffSpec === 'RANGE')  rangeMod += 15   + (t.upgrades.range  * 15);
+            hasAppliedStatsBuff = true;
         }
       }
     });
@@ -602,27 +680,21 @@ class Tower {
 
   update() {
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
-    if (this.isRail && !this.hasSpotter) return; // Railgun requires signal
+    if (this.isRail && !this.hasSpotter) return; 
     
-    // --- ICE AURA LOGIC (Passive immediate slow) ---
     if (TOWER_TYPES[this.type].isIce) {
       enemies.forEach(e => {
         const hasRadar = this.upgrades.radar > 0;
         if ((e.isCamo || e.isFlying) && !hasRadar) return;
         if (Math.hypot(e.x - this.x, e.y - this.y) <= this.range) {
-          e.slowTicks = Math.max(e.slowTicks, 10); // Keep slow active immediately
+          e.slowTicks = Math.max(e.slowTicks, 10); 
           e.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
         }
       });
     }
 
-    // --- ACCELERATOR BEAM LOGIC ---
     if (TOWER_TYPES[this.type].isAccel) {
-      if (this.rechargeTimer > 0) {
-        this.rechargeTimer--;
-        return;
-      }
-
+      if (this.rechargeTimer > 0) { this.rechargeTimer--; return; }
       let inRange = enemies.filter(e => {
         const hasRadar = this.upgrades.radar > 0;
         if (e.isCamo && !hasRadar) return false;
@@ -651,23 +723,16 @@ class Tower {
         }
         
         this.fireTimer--;
-        
-        if (this.fireTimer <= 0) {
-          this.rechargeTimer = this.reloadTime; 
-          this.currentTarget = null;
-        }
+        if (this.fireTimer <= 0) { this.rechargeTimer = this.reloadTime; this.currentTarget = null; }
         return;
       }
 
       if (inRange.length > 0) {
-        this.fireTimer = this.duration; 
-        this.currentTarget = inRange[0];
-        playSFX('sniper'); 
+        this.fireTimer = this.duration; this.currentTarget = inRange[0]; playSFX('sniper'); 
       }
       return;
     }
 
-    // --- STANDARD & RAILGUN TOWER LOGIC ---
     this.timer++;
     if (this.timer >= this.reloadTime) {
       let inRange = enemies.filter(e => {
@@ -687,22 +752,16 @@ class Tower {
         const target = inRange[0];
 
         if (this.isRail) {
-            // HITSCAN RAILGUN
             playSFX('railgun');
             const angle = Math.atan2(target.y - this.y, target.x - this.x);
             this.beamEndX = this.x + Math.cos(angle) * this.range;
             this.beamEndY = this.y + Math.sin(angle) * this.range;
-            this.railFireTimer = 10; // Frames to draw the beam
+            this.railFireTimer = 10; 
 
-            // Instantly damage enemies along the path (Piercing Hitscan)
             enemies.forEach(e => {
-                // Check distance from enemy center to the laser line segment
                 const distToLine = Math.abs((this.beamEndY - this.y)*e.x - (this.beamEndX - this.x)*e.y + this.beamEndX*this.y - this.beamEndY*this.x) / this.range;
-                
-                // Ensure enemy is in the "forward" direction of the beam
                 const dotProduct = (e.x - this.x)*(this.beamEndX - this.x) + (e.y - this.y)*(this.beamEndY - this.y);
                 
-                // If enemy is close to the beam line, in front of tower, and within range
                 if (distToLine < 25 && dotProduct > 0 && Math.hypot(e.x - this.x, e.y - this.y) <= this.range + 25) {
                     const dealt = e.takeDamage(this.damage);
                     this.damageDealt += dealt;
@@ -711,7 +770,6 @@ class Tower {
             });
             this.timer = 0;
         } else {
-            // Standard projectiles
             projectiles.push(new Projectile(this.x, this.y, target, this)); 
             if(this.type === 'SNIPER') playSFX('sniper'); else playSFX('shoot');
             this.timer = 0;
@@ -726,33 +784,16 @@ class Tower {
       ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke();
     }
     
-    // Draw Accelerator Beam
     if (this.type === 'ACCEL' && this.fireTimer > 0 && this.currentTarget && this.currentTarget.alive) {
-      ctx.strokeStyle = '#E040FB';
-      ctx.lineWidth = Math.random() * 4 + 2; 
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.currentTarget.x, this.currentTarget.y);
-      ctx.stroke();
-      
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.strokeStyle = '#E040FB'; ctx.lineWidth = Math.random() * 4 + 2; 
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.currentTarget.x, this.currentTarget.y); ctx.stroke();
+      ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
     }
 
-    // Draw Hitscan Railgun Beam
     if (this.isRail && this.railFireTimer > 0) {
-      ctx.strokeStyle = '#00FFFF';
-      ctx.lineWidth = Math.random() * 6 + 2; 
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.beamEndX, this.beamEndY);
-      ctx.stroke();
-      
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      
+      ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = Math.random() * 6 + 2; 
+      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.beamEndX, this.beamEndY); ctx.stroke();
+      ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
       this.railFireTimer--;
     }
     
@@ -761,8 +802,7 @@ class Tower {
     
     if (this.isRail && !this.hasSpotter) {
         ctx.fillStyle = 'red'; ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("NO SIGNAL", this.x, this.y - 10);
-        ctx.textAlign = 'left';
+        ctx.fillText("NO SIGNAL", this.x, this.y - 10); ctx.textAlign = 'left';
     }
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center';
@@ -781,7 +821,6 @@ class Projectile {
     this.y         = y;
     this.target    = target;
     this.tower     = tower; 
-    
     this.damage       = tower.damage;
     this.color        = TOWER_TYPES[tower.type].bullet;
     this.speed        = (tower.type === 'BOMB' ? 4 : 8); 
@@ -807,7 +846,6 @@ class Projectile {
             if (Math.hypot(e.x - this.x, e.y - this.y) <= this.splashRadius) {
               const hasRadar = this.tower.type === 'SNIPER' || this.tower.upgrades.radar > 0;
               if (e.isFlying && !hasRadar) return; 
-  
               const dealt = e.takeDamage(this.damage);
               this.tower.damageDealt += dealt; 
             }
@@ -816,33 +854,27 @@ class Projectile {
           if (this.target.alive) {
             playSFX('hit');
             spawnParticles(this.target.x, this.target.y, this.color, 4);
-            
             if (this.isFlame) {
               this.target.meltTicks = 180;
               this.target.armor = Math.max(0, this.target.armor - (0.2 + this.meltLevel * 0.3));
             }
             if (this.isIce) {
-              // Lingering slow from the actual projectile hit
               this.target.slowTicks  = 90 + this.slowLevel * 30;
               this.target.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
             }
-            
             const dealt = this.target.takeDamage(this.damage);
             this.tower.damageDealt += dealt; 
           }
         }
         this.alive = false;
     }
-    
     this.x += (dx / dist) * this.speed;
     this.y += (dy / dist) * this.speed;
   }
 
   draw() {
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.splashRadius ? 6 : (this.isIce ? 5 : 4), 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = this.color; ctx.beginPath();
+    ctx.arc(this.x, this.y, this.splashRadius ? 6 : (this.isIce ? 5 : 4), 0, Math.PI * 2); ctx.fill();
   }
 }
 
@@ -861,23 +893,18 @@ function drawHoverPreview() {
   pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
   if (!t.isFarm) {
-      pCtx.strokeStyle = t.color + '99';
-      pCtx.lineWidth   = 1.5;
-      pCtx.setLineDash([4, 4]);
-      pCtx.beginPath();
-      pCtx.arc(px, py, t.range, 0, Math.PI * 2);
-      pCtx.stroke();
-      pCtx.setLineDash([]);
+      pCtx.strokeStyle = t.color + '99'; pCtx.lineWidth = 1.5; pCtx.setLineDash([4, 4]);
+      pCtx.beginPath(); pCtx.arc(px, py, t.range, 0, Math.PI * 2); pCtx.stroke(); pCtx.setLineDash([]);
   }
 
   grid[hoverGy][hoverGx] = 1;
   const testPath = findPath();
   grid[hoverGy][hoverGx] = 0;
 
-  if (testPath || t.isFarm) {
+  if (testPath || t.isFarm || MAP_DATA[currentMapIndex].type === "FIXED") {
     pCtx.strokeStyle = 'rgba(100,255,100,0.35)'; pCtx.lineWidth = 2; pCtx.setLineDash([6, 4]);
     pCtx.beginPath();
-    if (testPath) {
+    if (testPath && MAP_DATA[currentMapIndex].type !== "FIXED") {
         testPath.forEach((p, i) => {
           const wx = p.x * TILE_SIZE + TILE_SIZE / 2; const wy = p.y * TILE_SIZE + TILE_SIZE / 2;
           if (i === 0) pCtx.moveTo(wx, wy); else pCtx.lineTo(wx, wy);
@@ -905,6 +932,26 @@ canvas.addEventListener('mouseleave', () => {
 
 // ── Global Actions ─────────────────────────────
 
+window.startGame = (mapIndex) => {
+    currentMapIndex = mapIndex;
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('game-root').style.display = 'flex';
+
+    const mapData = MAP_DATA[mapIndex];
+    COLS = mapData.cols; ROWS = mapData.rows;
+    canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE;
+    pCanvas.width = COLS * TILE_SIZE; pCanvas.height = ROWS * TILE_SIZE;
+
+    setupMap(mapData);
+    restartGame();
+};
+
+window.returnToMenu = () => {
+    document.getElementById('game-root').style.display = 'none';
+    document.getElementById('mainMenu').style.display = 'flex';
+    isPaused = true;
+};
+
 window.buyResearch = (type) => {
   const costs = { bounty: 500, piercing: 600, interest: 750 };
   if (gold >= costs[type]) {
@@ -913,10 +960,7 @@ window.buyResearch = (type) => {
     if (type === 'piercing') research.piercing += 2;
     if (type === 'interest') research.interest += 0.02;
     const btn = document.getElementById('res_' + type);
-    if (btn) {
-        btn.disabled = true;
-        btn.innerText += " [MAX]";
-    }
+    if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; }
   }
 };
 
@@ -935,10 +979,8 @@ window.upgradeSpeed = () => {
   const isAccel = selectedTower.type === 'ACCEL';
   const cost = selectedTower.upgrades.speed * (isAccel ? 50 : 30);
   if (selectedTower && gold >= cost) {
-    gold -= cost; 
-    selectedTower.baseReload *= (isAccel ? 0.8 : 0.85); 
-    selectedTower.upgrades.speed++;
-    selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
+    gold -= cost; selectedTower.baseReload *= (isAccel ? 0.8 : 0.85); 
+    selectedTower.upgrades.speed++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
   }
 };
 
@@ -946,10 +988,8 @@ window.upgradeDamage = () => {
   const isAccel = selectedTower.type === 'ACCEL';
   const cost = selectedTower.upgrades.damage * (isAccel ? 60 : 40);
   if (selectedTower && gold >= cost) {
-    gold -= cost; 
-    selectedTower.baseDamage += (isAccel ? 5 : selectedTower.baseDamage * 0.4); 
-    selectedTower.upgrades.damage++;
-    selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
+    gold -= cost; selectedTower.baseDamage += (isAccel ? 5 : selectedTower.baseDamage * 0.4); 
+    selectedTower.upgrades.damage++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
   }
 };
 
@@ -965,9 +1005,7 @@ window.upgradeRange = () => {
 window.upgradeAccelDuration = () => {
   const cost = selectedTower.upgrades.duration * 50;
   if (selectedTower && gold >= cost) {
-    gold -= cost; 
-    selectedTower.baseDuration += 60; 
-    selectedTower.upgrades.duration++;
+    gold -= cost; selectedTower.baseDuration += 60; selectedTower.upgrades.duration++;
     selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
   }
 };
@@ -976,10 +1014,7 @@ window.upgradeRadar = () => {
   if (!selectedTower || selectedTower.type === 'SNIPER') return;
   const cost = 150;
   if (selectedTower.upgrades.radar === 0 && gold >= cost) {
-    gold -= cost;
-    selectedTower.upgrades.radar = 1;
-    selectedTower.level++;
-    updateSelectionUI();
+    gold -= cost; selectedTower.upgrades.radar = 1; selectedTower.level++; updateSelectionUI();
   }
 };
 
@@ -1003,7 +1038,7 @@ window.setBuffSpec = type => {
 
 window.cycleTargeting = () => {
   if (!selectedTower) return;
-  const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random']; // Added Random
+  const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random'];
   selectedTower.targetMode = modes[(modes.indexOf(selectedTower.targetMode) + 1) % modes.length];
   updateSelectionUI();
 };
@@ -1012,10 +1047,7 @@ window.upgradeFarm = () => {
     if (!selectedTower || !selectedTower.isFarm || selectedTower.level >= 5) return;
     const cost = FARM_UPGRADE_COSTS[selectedTower.level];
     if (gold >= cost) {
-        gold -= cost;
-        selectedTower.level++;
-        selectedTower.income = FARM_INCOME_LEVELS[selectedTower.level - 1];
-        updateSelectionUI();
+        gold -= cost; selectedTower.level++; selectedTower.income = FARM_INCOME_LEVELS[selectedTower.level - 1]; updateSelectionUI();
     }
 };
 
@@ -1039,45 +1071,30 @@ window.removeTower = () => {
   gold += Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2);
   grid[selectedTower.gy][selectedTower.gx] = 0;
   towers = towers.filter(t => t !== selectedTower);
-  recalculateAllPaths();
-  selectedTower = null; updateSelectionUI();
+  recalculateAllPaths(); selectedTower = null; updateSelectionUI();
 };
 
 window.togglePause = () => {
   isPaused = !isPaused;
   const btn = document.getElementById('pauseBtn');
-  if (btn) {
-      btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; 
-      btn.style.background = isPaused ? '#FF9800' : '';
-  }
+  if (btn) { btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; btn.style.background = isPaused ? '#FF9800' : ''; }
 };
 
 window.toggleSpeed = () => {
   gameSpeed = gameSpeed === 1 ? 2 : 1;
   const btn = document.getElementById('speedBtn');
-  if (btn) {
-      btn.innerText = gameSpeed === 2 ? '2×' : '1×'; 
-      btn.classList.toggle('fast', gameSpeed === 2);
-  }
+  if (btn) { btn.innerText = gameSpeed === 2 ? '2×' : '1×'; btn.classList.toggle('fast', gameSpeed === 2); }
 };
 
 window.toggleMute = () => {
   const muteBtn = document.getElementById('muteBtn');
   if (isMusicPlaying) {
-    bgMusic.pause();
-    isMusicPlaying = false;
-    if (muteBtn) {
-        muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; 
-    }
+    bgMusic.pause(); isMusicPlaying = false;
+    if (muteBtn) { muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; }
   } else {
-    bgMusic.play().catch(err => {
-      console.error("Browser blocked audio:", err);
-      alert("Please click anywhere on the game screen first to allow audio!");
-    });
+    bgMusic.play().catch(err => { console.error("Browser blocked audio:", err); });
     isMusicPlaying = true;
-    if (muteBtn) {
-        muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; 
-    }
+    if (muteBtn) { muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; }
   }
 };
 
@@ -1087,18 +1104,25 @@ window.restartGame = () => {
   enemies = []; towers = []; projectiles = []; particles = [];
   selectedTower = null; selectedEnemy = null; buildType = null;
   isPaused = false; isWaveActive = false; gameSpeed = 1; frameCount = 0;
-  research = { bounty: 0, piercing: 0, interest: 0.01 }; // Reset research
+  research = { bounty: 0, piercing: 0, interest: 0.01 }; 
 
   const pauseBtn = document.getElementById('pauseBtn');
   if (pauseBtn) { pauseBtn.innerText = 'PAUSE'; pauseBtn.style.background = ''; }
-  
   const speedBtn = document.getElementById('speedBtn');
   if (speedBtn) { speedBtn.innerText = '1×'; speedBtn.classList.remove('fast'); }
-  
   const intDisp = document.getElementById('interestDisplay');
   if (intDisp) intDisp.innerText = '';
   
   grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  if (MAP_DATA[currentMapIndex].type === "FIXED") {
+      const layout = MAP_DATA[currentMapIndex].layout;
+      for(let y=0; y<ROWS; y++) {
+          for(let x=0; x<COLS; x++) {
+              if (layout[y][x] !== '0') grid[y][x] = 1;
+          }
+      }
+  }
+
   updateSelectionUI(); updateWavePreview();
 };
 
@@ -1139,18 +1163,16 @@ canvas.addEventListener('mousedown', e => {
 
   if (buildType) {
     if (buildType === 'FARM' && towers.filter(t => t.isFarm).length >= 8) {
-        alert("Maximum of 8 Farms allowed!");
-        buildType = null;
+        alert("Maximum of 8 Farms allowed!"); buildType = null;
         document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-        updateSelectionUI(); drawHoverPreview();
-        return;
+        updateSelectionUI(); drawHoverPreview(); return;
     }
 
     const cost = TOWER_TYPES[buildType].cost;
     if (gold >= cost && grid[gy] && grid[gy][gx] === 0) {
       if ((gx === startPos.x && gy === startPos.y) || (gx === endPos.x && gy === endPos.y)) return;
       grid[gy][gx] = 1;
-      const p = findPath();
+      const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
       if (p || TOWER_TYPES[buildType].isFarm) {
         gold -= cost; towers.push(new Tower(gx, gy, buildType)); recalculateAllPaths();
       } else { grid[gy][gx] = 0; }
@@ -1174,10 +1196,7 @@ function tick() {
       
       let farmGen = 0;
       towers.forEach(t => {
-          if (t.isFarm) {
-              farmGen += t.income;
-              t.totalGenerated += t.income;
-          }
+          if (t.isFarm) { farmGen += t.income; t.totalGenerated += t.income; }
       });
       
       gold += bonus + interest + farmGen;
@@ -1221,7 +1240,7 @@ function tick() {
       else if (waveNumber > 1 && r > 0.30) type = 'RUNNER';
     }
     
-    const p = findPath();
+    const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
     if (p || type === 'FLYER') enemies.push(new Enemy(p || [], type)); 
     enemiesLeftToSpawn--;
   }
@@ -1258,8 +1277,22 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Draw Base Grid
     ctx.strokeStyle = '#333';
     for(let x=0; x<COLS; x++) for(let y=0; y<ROWS; y++) ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    
+    // Draw Fixed Path for maps 2-5
+    if (MAP_DATA[currentMapIndex] && MAP_DATA[currentMapIndex].type === "FIXED") {
+      ctx.fillStyle = '#2c2c2c'; 
+      const layout = MAP_DATA[currentMapIndex].layout;
+      for(let y=0; y<ROWS; y++) {
+          for(let x=0; x<COLS; x++) {
+              if (layout[y] && layout[y][x] && layout[y][x] !== '0') {
+                  ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+              }
+          }
+      }
+    }
     
     ctx.fillStyle = '#2196F3'; ctx.fillRect(startPos.x*TILE_SIZE, startPos.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     ctx.fillStyle = '#F44336'; ctx.fillRect(endPos.x*TILE_SIZE, endPos.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -1287,6 +1320,5 @@ function update() {
     }
 }
 
-// Start
-updateWavePreview();
+// Start Main Loop (waits at menu)
 update();
