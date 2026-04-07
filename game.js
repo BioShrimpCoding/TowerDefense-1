@@ -93,7 +93,8 @@ const TOWER_TYPES = {
   BOMB:    { color: '#555555', range: 140, reload: 90,  damage: 10,   cost: 200, bullet: 'black',   splashRadius: 70 },
   ACCEL:   { color: '#E040FB', range: 180, reload: 120, damage: 12,   cost: 500, bullet: 'none',    isAccel: true, duration: 300 },
   BUFF:    { color: '#FFD700', range: 120, reload: 0,   damage: 0,    cost: 150, isBuff: true },
-  RAILGUN: { color: '#E91E63', range: 800, reload: 180, damage: 50,   cost: 800, bullet: '#00FFFF', isRail: true }
+  RAILGUN: { color: '#E91E63', range: 800, reload: 180, damage: 50,   cost: 800, bullet: '#00FFFF', isRail: true },
+  FARM:    { color: '#8BC34A', range: 0,   reload: 0,   damage: 0,    cost: 250, isFarm: true,      baseIncome: 50 }
 };
 
 const ENEMY_TYPES = {
@@ -120,6 +121,10 @@ let enemiesLeftToSpawn = 0, spawnTimer = 0, waveCooldown = 0;
 let isPaused = false, isWaveActive = false, gameSpeed = 1;
 let hoverGx = -1, hoverGy = -1;
 let frameCount = 0;
+
+// Farm Upgrades Config
+const FARM_UPGRADE_COSTS = [0, 200, 400, 700, 1200];
+const FARM_INCOME_LEVELS = [50, 100, 200, 350, 500];
 
 // Research State
 let research = {
@@ -250,30 +255,51 @@ function updateSelectionUI() {
   const isIce   = !!TOWER_TYPES[selectedTower.type].isIce;
   const isAccel = !!TOWER_TYPES[selectedTower.type].isAccel;
   const isRail  = !!TOWER_TYPES[selectedTower.type].isRail;
+  const isFarm  = !!TOWER_TYPES[selectedTower.type].isFarm;
 
-  document.getElementById('targetBtn').style.display           = isBuff  ? 'none'  : 'block';
+  document.getElementById('targetBtn').style.display           = (isBuff || isFarm) ? 'none'  : 'block';
   document.getElementById('buffSpecialization').style.display  = isBuff  ? 'flex'  : 'none';
   document.getElementById('flameUpgrades').style.display       = isFlame ? 'flex'  : 'none';
   document.getElementById('iceUpgrades').style.display         = isIce   ? 'flex'  : 'none';
   document.getElementById('accelUpgrades').style.display       = isAccel ? 'flex'  : 'none';
-  document.getElementById('standardUpgrades').style.display    = 'flex';
+  
+  const stdUps = document.getElementById('standardUpgrades');
+  if (stdUps) stdUps.style.display = (isBuff || isFarm) ? 'none' : 'flex';
+  
+  const farmUps = document.getElementById('farmUpgrades');
+  if (farmUps) {
+      farmUps.style.display = isFarm ? 'flex' : 'none';
+      if (isFarm) {
+          const btnFarm = document.getElementById('btnUpgradeFarm');
+          if (btnFarm) {
+              if (selectedTower.level < 5) {
+                  btnFarm.innerText = `Yield $${FARM_UPGRADE_COSTS[selectedTower.level]}`;
+                  btnFarm.style.display = 'block';
+              } else {
+                  btnFarm.innerText = `MAX LEVEL`;
+              }
+          }
+      }
+  }
 
   // Radar Button Management
   const btnRadar = document.getElementById('btnUpgradeRadar');
-  if (isBuff) {
-    btnRadar.style.display = 'none';
-  } else {
-    btnRadar.style.display = 'inline-block';
-    if (selectedTower.type === 'SNIPER') {
-      btnRadar.innerText = 'Radar (Native)';
-      btnRadar.style.opacity = '0.5';
-    } else if (selectedTower.upgrades.radar > 0) {
-      btnRadar.innerText = 'Radar (MAX)';
-      btnRadar.style.opacity = '0.5';
-    } else {
-      btnRadar.innerText = 'Radar $150';
-      btnRadar.style.opacity = '1';
-    }
+  if (btnRadar) {
+      if (isBuff || isFarm) {
+        btnRadar.style.display = 'none';
+      } else {
+        btnRadar.style.display = 'inline-block';
+        if (selectedTower.type === 'SNIPER') {
+          btnRadar.innerText = 'Radar (Native)';
+          btnRadar.style.opacity = '0.5';
+        } else if (selectedTower.upgrades.radar > 0) {
+          btnRadar.innerText = 'Radar (MAX)';
+          btnRadar.style.opacity = '0.5';
+        } else {
+          btnRadar.innerText = 'Radar $150';
+          btnRadar.style.opacity = '1';
+        }
+      }
   }
 
   if (isBuff) {
@@ -285,7 +311,7 @@ function updateSelectionUI() {
     document.getElementById('btnUpgradeDamage').innerText   = `Power $${selectedTower.upgrades.damage * 60}`;
     document.getElementById('btnUpgradeRange').innerText    = `Range $${selectedTower.upgrades.range  * 40}`;
     document.getElementById('btnUpgradeDuration').innerText = `Duration $${selectedTower.upgrades.duration * 50}`;
-  } else {
+  } else if (!isFarm) {
     document.getElementById('btnUpgradeSpeed').innerText  = `Speed $${selectedTower.upgrades.speed  * 30}`;
     document.getElementById('btnUpgradeDamage').innerText = `Power $${selectedTower.upgrades.damage * 40}`;
     document.getElementById('btnUpgradeRange').innerText  = `Range $${selectedTower.upgrades.range  * 25}`;
@@ -294,15 +320,20 @@ function updateSelectionUI() {
   if (isFlame) document.getElementById('btnUpgradeMelt').innerText = `Def Melt $${(selectedTower.meltLevel + 1) * 50}`;
   if (isIce)   document.getElementById('btnUpgradeSlow').innerText = `Slow Pwr $${(selectedTower.slowLevel  + 1) * 40}`;
 
-  const upgradeSpend =
-    (selectedTower.upgrades.speed  - 1) * (isAccel ? 50 : 30) +
-    (selectedTower.upgrades.damage - 1) * (isAccel ? 60 : 40) +
-    (selectedTower.upgrades.range  - 1) * (isAccel ? 40 : 25) +
-    (selectedTower.upgrades.duration - 1) * 50 +
-    (selectedTower.upgrades.radar * 150) +
-    (selectedTower.meltLevel * 50) +
-    (selectedTower.slowLevel * 40);
-  const sellVal = Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + upgradeSpend / 2);
+  let spend = 0;
+  if (isFarm) {
+      for(let i=1; i<selectedTower.level; i++) spend += FARM_UPGRADE_COSTS[i];
+  } else {
+      spend = (selectedTower.upgrades.speed  - 1) * (isAccel ? 50 : 30) +
+              (selectedTower.upgrades.damage - 1) * (isAccel ? 60 : 40) +
+              (selectedTower.upgrades.range  - 1) * (isAccel ? 40 : 25) +
+              (selectedTower.upgrades.duration - 1) * 50 +
+              (selectedTower.upgrades.radar * 150) +
+              (selectedTower.meltLevel * 50) +
+              (selectedTower.slowLevel * 40);
+  }
+  
+  const sellVal = Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2);
 
   const hasRadar = selectedTower.type === 'SNIPER' || selectedTower.upgrades.radar > 0;
   const radarStr = hasRadar ? `<span style="color:#00E676;">Active</span>` : `<span style="color:#aaa;">None</span>`;
@@ -313,7 +344,13 @@ function updateSelectionUI() {
     <div class="stat-row"><span>Sell:</span><span style="color:#ffd700;">$${sellVal}</span></div><br>
   `;
 
-  if (isBuff) {
+  if (isFarm) {
+    h += `
+      <div class="stat-row"><span>Income:</span><span style="color:#FFD700;">+$${selectedTower.income}/wave</span></div>
+      <div class="stat-row"><span>Total Gen:</span><span style="color:#FFD700;">$${selectedTower.totalGenerated}</span></div>
+      <div class="stat-row"><span>Limit:</span><span style="color:white;">${towers.filter(t=>t.isFarm).length} / 8</span></div>
+    `;
+  } else if (isBuff) {
     h += `
       <div class="stat-row"><span>Aura Radius:</span><span>${selectedTower.range}</span></div>
       <div class="stat-row"><span>Buff:</span><span style="color:#FFD700;">${selectedTower.buffSpec}</span></div>
@@ -511,8 +548,13 @@ class Tower {
     this.rechargeTimer = 0;
     this.currentTarget = null;
     
-    this.isRail     = !!TOWER_TYPES[typeKey].isRail; // Railgun Property
+    this.isRail     = !!TOWER_TYPES[typeKey].isRail;
+    this.isFarm     = !!TOWER_TYPES[typeKey].isFarm;
     this.hasSpotter = false;
+    
+    // Farm Specifics
+    this.income = TOWER_TYPES[typeKey].baseIncome || 0;
+    this.totalGenerated = 0;
   }
 
   applyBuffs(allTowers) {
@@ -522,7 +564,7 @@ class Tower {
     this.duration   = this.baseDuration;
     this.hasSpotter = false;
 
-    if (TOWER_TYPES[this.type].isBuff) return;
+    if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
 
     let speedMod = 1, dmgMod = 1, rangeMod = 0;
 
@@ -541,7 +583,7 @@ class Tower {
   }
 
   update() {
-    if (TOWER_TYPES[this.type].isBuff) return;
+    if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
     if (this.isRail && !this.hasSpotter) return; // Railgun requires signal
 
     // --- ACCELERATOR BEAM LOGIC ---
@@ -622,7 +664,7 @@ class Tower {
   }
 
   draw() {
-    if (selectedTower === this) {
+    if (selectedTower === this && !this.isFarm) {
       ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
       ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke();
     }
@@ -650,7 +692,11 @@ class Tower {
     }
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center';
-    ctx.fillText(TOWER_TYPES[this.type].isBuff ? this.buffSpec[0] : (this.isRail ? 'R' : this.type[0]), this.x, this.y + 3);
+    let icon = this.type[0];
+    if (TOWER_TYPES[this.type].isBuff) icon = this.buffSpec[0];
+    else if (this.isRail) icon = 'R';
+    else if (this.isFarm) icon = '$';
+    ctx.fillText(icon, this.x, this.y + 3);
     ctx.textAlign = 'left';
   }
 }
@@ -760,26 +806,31 @@ function drawHoverPreview() {
   pCtx.fillStyle = 'rgba(255,255,255,0.07)';
   pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-  pCtx.strokeStyle = t.color + '99';
-  pCtx.lineWidth   = 1.5;
-  pCtx.setLineDash([4, 4]);
-  pCtx.beginPath();
-  pCtx.arc(px, py, t.range, 0, Math.PI * 2);
-  pCtx.stroke();
-  pCtx.setLineDash([]);
+  if (!t.isFarm) {
+      pCtx.strokeStyle = t.color + '99';
+      pCtx.lineWidth   = 1.5;
+      pCtx.setLineDash([4, 4]);
+      pCtx.beginPath();
+      pCtx.arc(px, py, t.range, 0, Math.PI * 2);
+      pCtx.stroke();
+      pCtx.setLineDash([]);
+  }
 
   grid[hoverGy][hoverGx] = 1;
   const testPath = findPath();
   grid[hoverGy][hoverGx] = 0;
 
-  if (testPath) {
+  if (testPath || t.isFarm) {
     pCtx.strokeStyle = 'rgba(100,255,100,0.35)'; pCtx.lineWidth = 2; pCtx.setLineDash([6, 4]);
     pCtx.beginPath();
-    testPath.forEach((p, i) => {
-      const wx = p.x * TILE_SIZE + TILE_SIZE / 2; const wy = p.y * TILE_SIZE + TILE_SIZE / 2;
-      if (i === 0) pCtx.moveTo(wx, wy); else pCtx.lineTo(wx, wy);
-    });
-    pCtx.stroke(); pCtx.setLineDash([]);
+    if (testPath) {
+        testPath.forEach((p, i) => {
+          const wx = p.x * TILE_SIZE + TILE_SIZE / 2; const wy = p.y * TILE_SIZE + TILE_SIZE / 2;
+          if (i === 0) pCtx.moveTo(wx, wy); else pCtx.lineTo(wx, wy);
+        });
+        pCtx.stroke(); 
+    }
+    pCtx.setLineDash([]);
   } else {
     pCtx.fillStyle = 'rgba(255,0,0,0.15)';
     pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -807,8 +858,11 @@ window.buyResearch = (type) => {
     if (type === 'bounty') research.bounty += 5;
     if (type === 'piercing') research.piercing += 2;
     if (type === 'interest') research.interest += 0.02;
-    document.getElementById('res_' + type).disabled = true;
-    document.getElementById('res_' + type).innerText += " [MAX]";
+    const btn = document.getElementById('res_' + type);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText += " [MAX]";
+    }
   }
 };
 
@@ -816,7 +870,10 @@ window.setBuildType = t => {
   buildType = buildType === t ? null : t;
   selectedTower = null; selectedEnemy = null;
   document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-  if (buildType) document.getElementById('btn_' + buildType)?.classList.add('active-build');
+  if (buildType) {
+      const btn = document.getElementById('btn_' + buildType);
+      if (btn) btn.classList.add('active-build');
+  }
   updateSelectionUI(); drawHoverPreview();
 };
 
@@ -897,19 +954,35 @@ window.cycleTargeting = () => {
   updateSelectionUI();
 };
 
+window.upgradeFarm = () => {
+    if (!selectedTower || !selectedTower.isFarm || selectedTower.level >= 5) return;
+    const cost = FARM_UPGRADE_COSTS[selectedTower.level];
+    if (gold >= cost) {
+        gold -= cost;
+        selectedTower.level++;
+        selectedTower.income = FARM_INCOME_LEVELS[selectedTower.level - 1];
+        updateSelectionUI();
+    }
+};
+
 window.removeTower = () => {
   if (!selectedTower) return;
-  const isAccel = selectedTower.type === 'ACCEL';
-  const upgradeSpend =
-    (selectedTower.upgrades.speed  - 1) * (isAccel ? 50 : 30) +
-    (selectedTower.upgrades.damage - 1) * (isAccel ? 60 : 40) +
-    (selectedTower.upgrades.range  - 1) * (isAccel ? 40 : 25) +
-    (selectedTower.upgrades.duration - 1) * 50 +
-    (selectedTower.upgrades.radar * 150) +
-    (selectedTower.meltLevel * 50) +
-    (selectedTower.slowLevel * 40);
   
-  gold += Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + upgradeSpend / 2);
+  let spend = 0;
+  if (selectedTower.isFarm) {
+      for(let i=1; i<selectedTower.level; i++) spend += FARM_UPGRADE_COSTS[i];
+  } else {
+      const isAccel = selectedTower.type === 'ACCEL';
+      spend = (selectedTower.upgrades.speed  - 1) * (isAccel ? 50 : 30) +
+              (selectedTower.upgrades.damage - 1) * (isAccel ? 60 : 40) +
+              (selectedTower.upgrades.range  - 1) * (isAccel ? 40 : 25) +
+              (selectedTower.upgrades.duration - 1) * 50 +
+              (selectedTower.upgrades.radar * 150) +
+              (selectedTower.meltLevel * 50) +
+              (selectedTower.slowLevel * 40);
+  }
+  
+  gold += Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2);
   grid[selectedTower.gy][selectedTower.gx] = 0;
   towers = towers.filter(t => t !== selectedTower);
   recalculateAllPaths();
@@ -919,13 +992,19 @@ window.removeTower = () => {
 window.togglePause = () => {
   isPaused = !isPaused;
   const btn = document.getElementById('pauseBtn');
-  btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; btn.style.background = isPaused ? '#FF9800' : '';
+  if (btn) {
+      btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; 
+      btn.style.background = isPaused ? '#FF9800' : '';
+  }
 };
 
 window.toggleSpeed = () => {
   gameSpeed = gameSpeed === 1 ? 2 : 1;
   const btn = document.getElementById('speedBtn');
-  btn.innerText = gameSpeed === 2 ? '2×' : '1×'; btn.classList.toggle('fast', gameSpeed === 2);
+  if (btn) {
+      btn.innerText = gameSpeed === 2 ? '2×' : '1×'; 
+      btn.classList.toggle('fast', gameSpeed === 2);
+  }
 };
 
 window.toggleMute = () => {
@@ -933,28 +1012,37 @@ window.toggleMute = () => {
   if (isMusicPlaying) {
     bgMusic.pause();
     isMusicPlaying = false;
-    muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; 
+    if (muteBtn) {
+        muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; 
+    }
   } else {
     bgMusic.play().catch(err => {
       console.error("Browser blocked audio:", err);
       alert("Please click anywhere on the game screen first to allow audio!");
     });
     isMusicPlaying = true;
-    muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; 
+    if (muteBtn) {
+        muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; 
+    }
   }
 };
 
 window.restartGame = () => {
-  gold = 200; lives = 20; waveNumber = 0; 
+  gold = 250; lives = 20; waveNumber = 0; 
   enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0;
   enemies = []; towers = []; projectiles = []; particles = [];
   selectedTower = null; selectedEnemy = null; buildType = null;
   isPaused = false; isWaveActive = false; gameSpeed = 1; frameCount = 0;
   research = { bounty: 0, piercing: 0, interest: 0.01 }; // Reset research
 
-  document.getElementById('pauseBtn').innerText = 'PAUSE'; document.getElementById('pauseBtn').style.background = '';
-  document.getElementById('speedBtn').innerText = '1×'; document.getElementById('speedBtn').classList.remove('fast');
-  document.getElementById('interestDisplay').innerText = '';
+  const pauseBtn = document.getElementById('pauseBtn');
+  if (pauseBtn) { pauseBtn.innerText = 'PAUSE'; pauseBtn.style.background = ''; }
+  
+  const speedBtn = document.getElementById('speedBtn');
+  if (speedBtn) { speedBtn.innerText = '1×'; speedBtn.classList.remove('fast'); }
+  
+  const intDisp = document.getElementById('interestDisplay');
+  if (intDisp) intDisp.innerText = '';
   
   grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
   updateSelectionUI(); updateWavePreview();
@@ -973,6 +1061,7 @@ canvas.addEventListener('mousedown', e => {
 
   if (e.button === 2) {
     buildType = null; selectedTower = null; selectedEnemy = null;
+    document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
     updateSelectionUI(); drawHoverPreview(); return;
   }
 
@@ -983,22 +1072,32 @@ canvas.addEventListener('mousedown', e => {
   }
   if (clickedEnemy) {
     selectedEnemy = clickedEnemy; selectedTower = null; buildType = null;
+    document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
     updateSelectionUI(); return;
   }
 
   const existingTower = towers.find(t => t.gx === gx && t.gy === gy);
   if (existingTower) {
     selectedTower = existingTower; selectedEnemy = null; buildType = null;
+    document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
     updateSelectionUI(); return;
   }
 
   if (buildType) {
+    if (buildType === 'FARM' && towers.filter(t => t.isFarm).length >= 8) {
+        alert("Maximum of 8 Farms allowed!");
+        buildType = null;
+        document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
+        updateSelectionUI(); drawHoverPreview();
+        return;
+    }
+
     const cost = TOWER_TYPES[buildType].cost;
     if (gold >= cost && grid[gy] && grid[gy][gx] === 0) {
       if ((gx === startPos.x && gy === startPos.y) || (gx === endPos.x && gy === endPos.y)) return;
       grid[gy][gx] = 1;
       const p = findPath();
-      if (p) {
+      if (p || TOWER_TYPES[buildType].isFarm) {
         gold -= cost; towers.push(new Tower(gx, gy, buildType)); recalculateAllPaths();
       } else { grid[gy][gx] = 0; }
       drawHoverPreview();
@@ -1017,9 +1116,25 @@ function tick() {
   if (enemies.length === 0 && enemiesLeftToSpawn === 0) {
     if (isWaveActive) {
       const bonus    = 50 + waveNumber * 10;
-      const interest = Math.floor(gold * research.interest); // Interest Research
-      gold += bonus + interest;
-      document.getElementById('interestDisplay').innerText = `+ $${interest} interest`;
+      const interest = Math.floor(gold * research.interest);
+      
+      let farmGen = 0;
+      towers.forEach(t => {
+          if (t.isFarm) {
+              farmGen += t.income;
+              t.totalGenerated += t.income;
+          }
+      });
+      
+      gold += bonus + interest + farmGen;
+      
+      let dispText = `+ $${interest} int`;
+      if (farmGen > 0) dispText += ` | + $${farmGen} farms`;
+      const intDisp = document.getElementById('interestDisplay');
+      if (intDisp) intDisp.innerText = dispText;
+      
+      if (selectedTower && selectedTower.isFarm) updateSelectionUI();
+      
       isWaveActive = false; waveCooldown = 180; updateWavePreview();
     } else {
       if (waveCooldown > 0) {
@@ -1028,7 +1143,8 @@ function tick() {
         waveNumber++;
         enemiesLeftToSpawn = waveNumber % 10 === 0 ? 1 : 5 + waveNumber;
         spawnTimer = 999; isWaveActive = true;
-        document.getElementById('interestDisplay').innerText = ''; 
+        const intDisp = document.getElementById('interestDisplay');
+        if (intDisp) intDisp.innerText = ''; 
         updateWavePreview();
       }
     }
@@ -1077,9 +1193,14 @@ function update() {
 
     for (let i = 0; i < gameSpeed; i++) tick();
 
-    document.getElementById('goldDisplay').innerText = gold;
-    document.getElementById('livesDisplay').innerText = lives;
-    document.getElementById('waveDisplay').innerText = waveNumber;
+    const goldDisp = document.getElementById('goldDisplay');
+    if (goldDisp) goldDisp.innerText = gold;
+    
+    const livesDisp = document.getElementById('livesDisplay');
+    if (livesDisp) livesDisp.innerText = lives;
+    
+    const waveDisp = document.getElementById('waveDisplay');
+    if (waveDisp) waveDisp.innerText = waveNumber;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     

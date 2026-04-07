@@ -1,9 +1,4 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   background: #222;
   display: flex;
@@ -13,28 +8,9 @@ body {
   color: white;
   padding: 10px;
 }
-
-/* ── Layout ── */
-#game-root {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-#gameArea {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  width: 100%;
-}
-
-#canvasWrapper {
-  position: relative;
-  flex-shrink: 0;
-}
-
-/* ── Top UI Bar ── */
+#game-root { display: flex; flex-direction: column; align-items: center; width: 100%; }
+#gameArea { display: flex; gap: 10px; align-items: flex-start; width: 100%; }
+#canvasWrapper { position: relative; flex-shrink: 0; }
 #ui {
   display: flex;
   align-items: center;
@@ -46,170 +22,36 @@ body {
   border: 1px solid #555;
   width: 100%;
   flex-wrap: wrap;
+  transition: box-shadow 0.4s ease;
 }
-
-.stats-group {
-  display: flex;
-  gap: 12px;
-  font-weight: bold;
-  font-size: 13px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.shop-group {
-  display: flex;
-  gap: 4px;
-  border-left: 2px solid #444;
-  padding-left: 10px;
-  flex-wrap: wrap;
-}
-
-#upgradeMenu {
-  display: none; /* Controlled by JS */
-  border-left: 2px solid #444;
-  padding-left: 10px;
-  gap: 5px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-/* ── Canvas ── */
-canvas {
-  border: 3px solid #444;
-  border-radius: 4px;
-  background: #1a1a1a;
-  flex-shrink: 0;
-  cursor: crosshair;
-}
-
-#pathPreviewCanvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  background: transparent;
-}
-
-/* ── Side Menu ── */
-#sideMenu {
-  width: 190px;
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid #444;
-  padding: 5px 0;
-  font-size: 12px;
-}
-
-.stat-row span:last-child {
-  font-weight: bold;
-  color: #4CAF50;
-}
-
-#wavePreview {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid #555;
-}
-
-#wavePreview h4 {
-  margin: 0 0 6px;
-  font-size: 12px;
-  color: #aaa;
-}
-
-.wave-pill {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 10px;
-  font-size: 11px;
-  margin: 2px;
-  font-weight: bold;
-}
-
-/* ── Buttons ── */
-button {
-  padding: 5px 9px;
-  cursor: pointer;
-  background: #444;
-  color: white;
-  border: 1px solid #666;
-  border-radius: 4px;
-  font-size: 11px;
-  transition: background 0.15s ease;
-}
-
+.stats-group { display: flex; gap: 12px; font-weight: bold; font-size: 13px; align-items: center; }
+.shop-group { display: flex; gap: 4px; border-left: 2px solid #444; padding-left: 10px; }
+#upgradeMenu { display: none; border-left: 2px solid #444; padding-left: 10px; gap: 5px; align-items: center; }
+canvas { border: 3px solid #444; border-radius: 4px; background: #1a1a1a; cursor: crosshair; }
+#pathPreviewCanvas { position: absolute; top: 0; left: 0; pointer-events: none; background: transparent; }
+#sideMenu { width: 190px; background: #333; border: 1px solid #555; border-radius: 8px; padding: 10px; font-size: 12px; }
+.stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding: 5px 0; font-size: 12px; }
+.stat-row span:last-child { font-weight: bold; color: #4CAF50; }
+#wavePreview { margin-top: 10px; padding-top: 8px; border-top: 1px solid #555; }
+#wavePreview h4 { margin: 0 0 6px; font-size: 12px; color: #aaa; }
+.wave-pill { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; margin: 2px; font-weight: bold; }
+button { padding: 5px 9px; cursor: pointer; background: #444; color: white; border: 1px solid #666; border-radius: 4px; font-size: 11px; }
 button:hover { background: #555; }
-button:active { transform: translateY(1px); }
-
 .sys-btn { background: #1976D2 !important; border: none !important; font-weight: bold; }
-.sys-btn:hover { background: #2196F3 !important; }
-
 .remove-btn { background: #941a1a !important; border: none !important; }
-.remove-btn:hover { background: #b31e1e !important; }
-
 .buff-choice { background: #5c3d99 !important; border-color: #7b52cc !important; }
-.buff-choice:hover { background: #6e49b8 !important; }
-
 .flame-choice { background: #d84315 !important; border-color: #bf360c !important; }
-.flame-choice:hover { background: #f4511e !important; }
-
 .ice-btn { background: #0288D1 !important; border-color: #29b6f6 !important; }
-.ice-btn:hover { background: #0396e0 !important; }
-
 .accel-btn { background: #9C27B0 !important; border-color: #E040FB !important; }
-.accel-btn:hover { background: #AB47BC !important; }
-
 .accel-choice { background: #7B1FA2 !important; border-color: #9C27B0 !important; }
-.accel-choice:hover { background: #8E24AA !important; }
-
 .radar-btn { background: #00796B !important; border-color: #00E676 !important; }
-.radar-btn:hover { background: #00897B !important; }
-
-button.active-build {
-  background: #1976D2 !important;
-  border-color: #42a5f5 !important;
-  box-shadow: 0 0 0 2px #42a5f566;
-}
-
-#speedBtn.fast {
-  background: #FF9800 !important;
-  border-color: #ffb74d !important;
-}
+.farm-btn { background: #8BC34A !important; border-color: #689F38 !important; color: #111;}
+.farm-btn:hover { background: #9CCC65 !important; }
+button.active-build { background: #1976D2 !important; border-color: #42a5f5 !important; box-shadow: 0 0 0 2px #42a5f566; }
+#speedBtn.fast { background: #FF9800 !important; }
 
 /* ── Research Menu ── */
-#researchMenu {
-  margin-top: 15px;
-  padding-top: 10px;
-  border-top: 2px solid #444;
-}
-
-#researchMenu button {
-  width: 100%;
-  margin-bottom: 5px;
-  background: #37474f;
-  border-color: #546e7a;
-  text-align: left;
-  padding: 8px;
-}
-
-#researchMenu button:hover:not(:disabled) {
-  background: #455a64;
-}
-
-#researchMenu button:disabled {
-  background: #1b282e;
-  color: #4CAF50;
-  cursor: default;
-  border-color: #2e7d32;
-  opacity: 0.8;
-}
+#researchMenu { margin-top: 15px; padding-top: 10px; border-top: 2px solid #444; }
+#researchMenu button { width: 100%; margin-bottom: 5px; background: #37474f; border-color: #546e7a; text-align: left; padding: 8px; }
+#researchMenu button:hover:not(:disabled) { background: #455a64; }
+#researchMenu button:disabled { background: #1b282e; color: #4CAF50; cursor: default; border-color: #2e7d32; opacity: 0.8; }

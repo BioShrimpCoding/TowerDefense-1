@@ -11,7 +11,7 @@
 <div id="game-root">
   <div id="ui">
     <div class="stats-group">
-      <div style="color:#ffd700;">$<span id="goldDisplay">200</span></div>
+      <div style="color:#ffd700;">$<span id="goldDisplay">2000</span></div>
       <div style="color:#ff4444;">❤<span id="livesDisplay">20</span></div>
       <div>Wave <span id="waveDisplay">0</span></div>
       <div style="color:#aaa;font-size:11px;" id="interestDisplay"></div>
@@ -32,29 +32,40 @@
       <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn">Accel $500</button>
       <button id="btn_BUFF" onclick="setBuildType('BUFF')">Buff $150</button>
       <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;">Railgun $800</button>
+      <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn">Farm $250</button>
     </div>
     <div id="upgradeMenu">
       <button id="targetBtn" onclick="cycleTargeting()">First</button>
+      
       <div id="standardUpgrades" style="display:flex;gap:4px;">
         <button id="btnUpgradeSpeed" onclick="upgradeSpeed()">Speed</button>
         <button id="btnUpgradeDamage" onclick="upgradeDamage()">Power</button>
         <button id="btnUpgradeRange" onclick="upgradeRange()">Range</button>
         <button id="btnUpgradeRadar" class="radar-btn" onclick="upgradeRadar()">Radar $150</button>
       </div>
+      
       <div id="accelUpgrades" style="display:none;gap:4px;">
         <button id="btnUpgradeDuration" class="accel-choice" onclick="upgradeAccelDuration()">Duration</button>
       </div>
+      
       <div id="buffSpecialization" style="display:none;gap:4px;">
         <button class="buff-choice" onclick="setBuffSpec('SPEED')">Speed</button>
         <button class="buff-choice" onclick="setBuffSpec('DAMAGE')">Dmg</button>
         <button class="buff-choice" onclick="setBuffSpec('RANGE')">Range</button>
       </div>
+      
       <div id="flameUpgrades" style="display:none;gap:4px;">
         <button id="btnUpgradeMelt" class="flame-choice" onclick="upgradeDefenseMelt()">Def Melt</button>
       </div>
+      
       <div id="iceUpgrades" style="display:none;gap:4px;">
         <button id="btnUpgradeSlow" class="ice-btn" onclick="upgradeSlowPower()">Slow Pwr</button>
       </div>
+
+      <div id="farmUpgrades" style="display:none;gap:4px;">
+        <button id="btnUpgradeFarm" class="farm-btn" onclick="upgradeFarm()">Yield</button>
+      </div>
+
       <button class="remove-btn" onclick="removeTower()">SELL</button>
     </div>
   </div>
@@ -65,9 +76,7 @@
       <canvas id="pathPreviewCanvas" width="800" height="480"></canvas>
     </div>
     <div id="sideMenu">
-      <div id="statsContent">
-        <p style="color:#aaa;text-align:center;margin-top:30px;font-size:11px;">Select a tower or enemy to view stats.</p>
-      </div>
+      <div id="statsContent"></div>
       <div id="researchMenu">
         <h4 style="color:#ffd700; margin-bottom:5px;">RESEARCH</h4>
         <button onclick="buyResearch('bounty')" id="res_bounty">Bounty Hunter $500</button>
