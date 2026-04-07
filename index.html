@@ -23,10 +23,10 @@
 <div id="game-root" style="display:none;">
   <div id="ui">
     <div class="stats-group">
-      <div style="color:#ffd700;">$<br><span id="goldDisplay">250</span></div>
-      <div style="color:#ff4444;">❤<br><span id="livesDisplay">20</span></div>
-      <div>WAVE<br><span id="waveDisplay">0</span></div>
-      <div style="display:flex; gap:4px; margin-left:4px; width: auto;">
+      <div class="fixed-stat-box" style="color:#ffd700;">$<br><span id="goldDisplay">250</span></div>
+      <div class="fixed-stat-box" style="color:#ff4444;">❤<br><span id="livesDisplay">20</span></div>
+      <div class="fixed-stat-box">WAVE<br><span id="waveDisplay">0</span></div>
+      <div style="display:flex; gap:4px; margin-left:8px; width: auto;">
         <button id="pauseBtn" class="sys-btn" onclick="togglePause()">PAUSE</button>
         <button id="speedBtn" class="sys-btn" onclick="toggleSpeed()">1×</button>
         <button id="muteBtn" class="sys-btn" onclick="toggleMute()">🎵 PLAY MUSIC</button>
@@ -44,6 +44,7 @@
       <button id="btn_BOMB" onclick="setBuildType('BOMB')">Artillery<br>$200</button>
       <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn">Accel<br>$500</button>
       <button id="btn_BUFF" onclick="setBuildType('BUFF')">Buff<br>$150</button>
+      <button id="btn_ENGIE" onclick="setBuildType('ENGIE')" style="border-color:#FFC107;">Engie<br>$400</button>
       <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;">Railgun<br>$800</button>
       <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn">Farm<br>$250</button>
     </div>
