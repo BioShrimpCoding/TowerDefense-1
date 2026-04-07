@@ -1,214 +1,89 @@
-// ─────────────────────────────────────────────
-//  Desktop Defender — game.js
-// ─────────────────────────────────────────────
-
-const canvas  = document.getElementById('gameCanvas');
-const ctx     = canvas.getContext('2d');
-const pCanvas = document.getElementById('pathPreviewCanvas');
-const pCtx    = pCanvas.getContext('2d');
-
+const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+const pCanvas = document.getElementById('pathPreviewCanvas'), pCtx = pCanvas.getContext('2d');
 const TILE_SIZE = 40;
-let COLS = 20;
-let ROWS = 12;
+let COLS = 20, ROWS = 12;
 
-// ── Map Definitions ────────────────────────────
 const MAP_DATA = [
-  {
-    name: "Map 1: Sandbox", type: "RANDOM",
-    cols: 20, rows: 12,
-    start: { x: 0, y: 6 }, end: { x: 19, y: 6 },
-    layout: [] 
-  },
-  {
-    name: "Map 2: The S-Curve", type: "FIXED",
-    cols: 20, rows: 12,
-    layout: [
-      "00000000000000000000",
-      "S1111111110000000000",
-      "00000000010000000000",
-      "00000000011111111100",
-      "00000000000000000100",
-      "00111111111111111100",
-      "00100000000000000000",
-      "0011111111111111111E",
-      "00000000000000000000",
-      "00000000000000000000",
-      "00000000000000000000",
-      "00000000000000000000"
-    ]
-  },
-  {
-    name: "Map 3: The Spiral", type: "FIXED",
-    cols: 16, rows: 12,
-    layout: [
-      "S111111111111110",
-      "0000000000000010",
-      "0111111111110010",
-      "0100000000010010",
-      "0101111110010010",
-      "0101000010010010",
-      "010100E110010010",
-      "0101000000010010",
-      "0101111111110010",
-      "0100000000000010",
-      "0111111111111110",
-      "0000000000000000"
-    ]
-  },
-  {
-    name: "Map 4: River Run", type: "FIXED",
-    cols: 24, rows: 10,
-    layout: [
-      "S11000000000111000000000",
-      "001100000001101100000000",
-      "000110000011000110000000",
-      "000011000110000011000000",
-      "000001101100000001100000",
-      "000000111000000000110000",
-      "000000000000000000011000",
-      "000000000000000000001100",
-      "00000000000000000000011E",
-      "000000000000000000000000"
-    ]
-  },
-  {
-    name: "Map 5: The Maze", type: "FIXED",
-    cols: 18, rows: 14,
-    layout: [
-      "S00000000000000000",
-      "101111111111111110",
-      "101000000000000010",
-      "101011111111111010",
-      "101010000000001010",
-      "101010111111101010",
-      "101010100000101010",
-      "1010101011E0101010",
-      "101010100000101010",
-      "101010111111101010",
-      "101010000000001010",
-      "101011111111111010",
-      "101000000000000010",
-      "111111111111111110"
-    ]
-  }
+  { name: "Map 1: Sandbox", type: "RANDOM", cols: 20, rows: 12, start: {x:0, y:6}, end: {x:19, y:6}, layout: [] },
+  { name: "Map 2: The S-Curve", type: "FIXED", cols: 20, rows: 12, layout: [
+      "00000000000000000000","S1111111110000000000","00000000010000000000","00000000011111111100",
+      "00000000000000000100","00111111111111111100","00100000000000000000","0011111111111111111E",
+      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000" ] },
+  { name: "Map 3: The Spiral", type: "FIXED", cols: 16, rows: 12, layout: [
+      "S111111111111110","0000000000000010","0111111111110010","0100000000010010","0101111110010010",
+      "0101000010010010","010100E110010010","0101000000010010","0101111111110010","0100000000000010",
+      "0111111111111110","0000000000000000" ] },
+  { name: "Map 4: River Run", type: "FIXED", cols: 24, rows: 10, layout: [
+      "S11000000000111000000000","001100000001101100000000","000110000011000110000000",
+      "000011000110000011000000","000001101100000001100000","000000111000000000110000",
+      "000000000000000000011000","000000000000000000001100","00000000000000000000011E",
+      "000000000000000000000000" ] },
+  { name: "Map 5: The Maze", type: "FIXED", cols: 18, rows: 14, layout: [
+      "S00000000000000000","101111111111111110","101000000000000010","101011111111111010",
+      "101010000000001010","101010111111101010","101010100000101010","1010101011E0101010",
+      "101010100000101010","101010111111101010","101010000000001010","101011111111111010",
+      "101000000000000010","111111111111111110" ] }
 ];
 
-let currentMapIndex = 0;
-let startPos = { x: 0, y: 6 };
-let endPos   = { x: 19, y: 6 };
+let currentMapIndex = 0, startPos = {x:0, y:6}, endPos = {x:19, y:6};
 
-function setupMap(mapData) {
-    if (mapData.type === "RANDOM") {
-        startPos = mapData.start;
-        endPos = mapData.end;
-        return;
-    }
-    
+function setupMap(m) {
+    if (m.type === "RANDOM") { startPos=m.start; endPos=m.end; return; }
     let s, e;
-    let rows = mapData.layout.length;
-    let cols = mapData.layout[0].length;
-    for(let y=0; y<rows; y++){
-        for(let x=0; x<cols; x++){
-            if(mapData.layout[y][x]==='S') s = {x,y};
-            if(mapData.layout[y][x]==='E') e = {x,y};
-        }
+    for(let y=0; y<m.layout.length; y++) for(let x=0; x<m.layout[0].length; x++){
+        if(m.layout[y][x]==='S') s={x,y}; if(m.layout[y][x]==='E') e={x,y};
     }
-    startPos = s; endPos = e;
-
-    let q = [[s.x, s.y, []]];
-    let vis = new Set([`${s.x},${s.y}`]);
-    
+    startPos=s; endPos=e;
+    let q = [[s.x, s.y, []]], vis = new Set([`${s.x},${s.y}`]);
     while(q.length > 0) {
-        let [x, y, path] = q.shift();
-        let cur = [...path, {x,y}];
-        if (x===e.x && y===e.y) {
-            mapData.fixedPath = cur;
-            return;
-        }
-        let neighbors = [
-            {x:x+1,y}, {x:x-1,y}, {x,y:y+1}, {x,y:y-1},
-            {x:x+1,y:y+1}, {x:x+1,y:y-1}, {x:x-1,y:y+1}, {x:x-1,y:y-1}
-        ];
-        for(let n of neighbors) {
-            if (n.x>=0 && n.x<cols && n.y>=0 && n.y<rows) {
-                let char = mapData.layout[n.y][n.x];
-                if ((char === '1' || char === 'E') && !vis.has(`${n.x},${n.y}`)) {
-                    vis.add(`${n.x},${n.y}`);
-                    q.push([n.x, n.y, cur]);
-                }
+        let [x, y, p] = q.shift(), cur = [...p, {x,y}];
+        if (x===e.x && y===e.y) { m.fixedPath = cur; return; }
+        [{x:x+1,y}, {x:x-1,y}, {x,y:y+1}, {x,y:y-1}, {x:x+1,y:y+1}, {x:x+1,y:y-1}, {x:x-1,y:y+1}, {x:x-1,y:y-1}].forEach(n => {
+            if(n.x>=0 && n.x<m.cols && n.y>=0 && n.y<m.rows && (m.layout[n.y][n.x]==='1'||m.layout[n.y][n.x]==='E') && !vis.has(`${n.x},${n.y}`)) {
+                vis.add(`${n.x},${n.y}`); q.push([n.x, n.y, cur]);
             }
-        }
+        });
     }
-    mapData.fixedPath = []; 
+    m.fixedPath = [];
 }
 
-// ── Audio Setup ────────
-const bgMusic = new Audio('bgm.mp3');
-bgMusic.loop = true; bgMusic.volume = 0.3;
-let isMusicPlaying = false; let audioCtx = null;
+const bgMusic = new Audio('bgm.mp3'); bgMusic.loop = true; bgMusic.volume = 0.3;
+let isMusicPlaying = false, audioCtx = null;
 
-function playSFX(type) {
+function playSFX(t) {
   if (!isMusicPlaying) return; 
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+  const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
   osc.connect(gain); gain.connect(audioCtx.destination);
   const now = audioCtx.currentTime;
-  
-  if (type === 'shoot') {
-    osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
-    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-    gain.gain.setValueAtTime(0.02, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    osc.start(now); osc.stop(now + 0.1);
-  } else if (type === 'sniper') {
-    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now);
-    osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
-    gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    osc.start(now); osc.stop(now + 0.3);
-  } else if (type === 'explosion') {
-    osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
-    osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
-    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-    osc.start(now); osc.stop(now + 0.4);
-  } else if (type === 'hit') {
-    osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now);
-    osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
-    gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0, now + 0.05);
-    osc.start(now); osc.stop(now + 0.05);
-  } else if (type === 'railgun') {
-    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(800, now);
-    osc.frequency.exponentialRampToValueAtTime(100, now + 0.5);
-    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-    osc.start(now); osc.stop(now + 0.5);
-  }
+  const cf = {'shoot':{t:'square',f1:400,f2:100,g:0.02,d:0.1}, 'sniper':{t:'sawtooth',f1:150,f2:40,g:0.05,d:0.3},
+    'explosion':{t:'square',f1:100,f2:20,g:0.08,d:0.4}, 'hit':{t:'triangle',f1:300,f2:500,g:0.01,d:0.05,r:'l'},
+    'railgun':{t:'sawtooth',f1:800,f2:100,g:0.08,d:0.5}}[t];
+  if(!cf) return;
+  osc.type = cf.t; osc.frequency.setValueAtTime(cf.f1, now);
+  osc.frequency.exponentialRampToValueAtTime(cf.f2, now+cf.d);
+  gain.gain.setValueAtTime(cf.g, now);
+  if(cf.r==='l') gain.gain.linearRampToValueAtTime(0.001, now+cf.d); else gain.gain.exponentialRampToValueAtTime(0.001, now+cf.d);
+  osc.start(now); osc.stop(now+cf.d);
 }
 
-// ── Particles System ──────
 let particles = [];
 class Particle {
-  constructor(x, y, color, speedScale = 1) {
-    this.x = x; this.y = y; this.color = color;
-    const angle = Math.random() * Math.PI * 2;
-    const speed = (Math.random() * 2 + 1) * speedScale;
-    this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-    this.life = 1.0; this.decay = Math.random() * 0.05 + 0.02;
+  constructor(x, y, c, s = 1) {
+    this.x=x; this.y=y; this.c=c; const a = Math.random()*Math.PI*2, sp = (Math.random()*2+1)*s;
+    this.vx=Math.cos(a)*sp; this.vy=Math.sin(a)*sp; this.l=1.0; this.d=Math.random()*0.05+0.02;
   }
-  update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
-  draw() {
-    ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, 3, 3); ctx.globalAlpha = 1.0;
-  }
+  update() { this.x+=this.vx; this.y+=this.vy; this.l-=this.d; }
+  draw() { ctx.globalAlpha=Math.max(0,this.l); ctx.fillStyle=this.c; ctx.fillRect(this.x,this.y,3,3); ctx.globalAlpha=1.0; }
 }
-function spawnParticles(x, y, color, count, speedScale = 1) {
-  for(let i=0; i<count; i++) particles.push(new Particle(x, y, color, speedScale));
-}
+const spawnParticles = (x,y,c,n,s=1) => { for(let i=0; i<n; i++) particles.push(new Particle(x,y,c,s)); };
 
-// ── Tower & Enemy definitions ──────────────────
 const TOWER_TYPES = {
   PISTOL:  { color: '#4CAF50', range: 150, reload: 40,  damage: 2,    cost: 50,  bullet: 'orange' },
   SNIPER:  { color: '#2196F3', range: 350, reload: 100, damage: 15,   cost: 150, bullet: 'white'  },
   MINIGUN: { color: '#FF9800', range: 120, reload: 6,   damage: 2,    cost: 300, bullet: 'yellow' },
   FLAME:   { color: '#FF5722', range: 100, reload: 15,  damage: 1,    cost: 175, bullet: 'red',     isFlame: true },
-  ICE:     { color: '#29b6f6', range: 130, reload: 150, damage: 0.5,  cost: 125, bullet: '#b3e5fc', isIce:   true }, 
+  ICE:     { color: '#29b6f6', range: 130, reload: 150, damage: 0.5,  cost: 125, bullet: '#b3e5fc', isIce: true }, 
   BOMB:    { color: '#555555', range: 140, reload: 90,  damage: 10,   cost: 200, bullet: 'black',   splashRadius: 70 },
   ACCEL:   { color: '#E040FB', range: 180, reload: 120, damage: 12,   cost: 500, bullet: 'none',    isAccel: true, duration: 300 },
   BUFF:    { color: '#FFD700', range: 120, reload: 0,   damage: 0,    cost: 150, isBuff: true },
@@ -227,443 +102,167 @@ const ENEMY_TYPES = {
   BOSS:    { color: '#111111', speed: 0.4, hp: 300, armor: 8, reward: 200 }
 };
 
-const WAVE_COLORS = {
-  NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', 
-  FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', BOSS: '#FF0000'
-};
+const WAVE_COLORS = { NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', BOSS: '#FF0000' };
 
-// ── Game state ─────────────────────────────────
-let gold = 250, lives = 20, waveNumber = 0, buildType = null;
-let selectedTower = null, selectedEnemy = null;
-let enemiesLeftToSpawn = 0, spawnTimer = 0, waveCooldown = 0;
-let isPaused = false, isWaveActive = false, gameSpeed = 1;
-let hoverGx = -1, hoverGy = -1;
-let frameCount = 0;
-
-const FARM_UPGRADE_COSTS = [0, 200, 400, 700, 1200];
-const FARM_INCOME_LEVELS = [50, 100, 200, 350, 500];
-
+let gold=250, lives=20, waveNumber=0, buildType=null, selectedTower=null, selectedEnemy=null, enemiesLeftToSpawn=0, spawnTimer=0, waveCooldown=0;
+let isPaused=false, isWaveActive=false, gameSpeed=1, hoverGx=-1, hoverGy=-1, frameCount=0;
+const FARM_UPGRADE_COSTS = [0, 200, 400, 700, 1200], FARM_INCOME_LEVELS = [50, 100, 200, 350, 500];
 let research = { bounty: 0, piercing: 0, interest: 0.01 };
+let grid = [], enemies = [], towers = [], projectiles = [];
 
-let grid = [];
-let enemies = [];
-let towers = [];
-let projectiles = [];
-
-// ── Pathfinding ────
-function findPath(startX = startPos.x, startY = startPos.y) {
-  const queue = [[startX, startY, []]];
-  const visited = new Set([`${startX},${startY}`]);
-
-  while (queue.length > 0) {
-    const randomIndex = Math.floor(Math.random() * queue.length);
-    const [x, y, path] = queue.splice(randomIndex, 1)[0];
-    const cur = [...path, { x, y }];
+function findPath(sx = startPos.x, sy = startPos.y) {
+  let q = [[sx, sy, []]], vis = new Set([`${sx},${sy}`]);
+  while (q.length > 0) {
+    let i = Math.floor(Math.random() * q.length), [x, y, p] = q.splice(i, 1)[0], cur = [...p, {x, y}];
     if (x === endPos.x && y === endPos.y) return cur;
-
-    const neighbors = [
-      { x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }
-    ].sort(() => Math.random() - 0.5);
-
-    for (const n of neighbors) {
-      const k = `${n.x},${n.y}`;
-      if (n.x >= 0 && n.x < COLS && n.y >= 0 && n.y < ROWS && grid[n.y][n.x] === 0 && !visited.has(k)) {
-        visited.add(k); queue.push([n.x, n.y, cur]);
-      }
-    }
-  }
-  return null;
+    [{x:x+1,y}, {x:x-1,y}, {x,y:y+1}, {x,y:y-1}].sort(()=>Math.random()-0.5).forEach(n => {
+      if(n.x>=0 && n.x<COLS && n.y>=0 && n.y<ROWS && grid[n.y][n.x]===0 && !vis.has(`${n.x},${n.y}`)) { vis.add(`${n.x},${n.y}`); q.push([n.x, n.y, cur]); }
+    });
+  } return null;
 }
 
-function recalculateAllPaths() {
-  enemies.forEach(e => {
-    if (e.isFlying) return;
-    const gx = Math.floor(e.x / TILE_SIZE);
-    const gy = Math.floor(e.y / TILE_SIZE);
-    const p  = findPath(gx, gy);
-    if (p) { e.path = p; e.pathIndex = 0; }
-  });
-}
+const recalculateAllPaths = () => enemies.forEach(e => { if(e.isFlying) return; let p = findPath(Math.floor(e.x/TILE_SIZE), Math.floor(e.y/TILE_SIZE)); if(p) { e.path=p; e.pathIndex=0; } });
 
 function getWaveComposition(wNum) {
   if (wNum % 10 === 0 && wNum > 0) return { BOSS: 1 };
-  const total = 5 + wNum;
   const comp = { NORMAL: 0, RUNNER: 0, TANK: 0, FLYER: 0, GHOST: 0, HEALER: 0, CARRIER: 0 };
-  for(let i=0; i<total; i++) {
-    const r = Math.random();
-    if (wNum > 12 && r > 0.90) comp.CARRIER++;
-    else if (wNum > 9 && r > 0.80) comp.HEALER++;
-    else if (wNum > 7 && r > 0.65) comp.GHOST++;
-    else if (wNum > 4 && r > 0.50) comp.FLYER++;
-    else if (wNum > 3 && r > 0.40) comp.TANK++;
-    else if (wNum > 1 && r > 0.30) comp.RUNNER++;
-    else comp.NORMAL++;
-  }
-  return comp;
+  for(let i=0; i<5+wNum; i++) {
+    let r = Math.random();
+    if (wNum>12&&r>0.9) comp.CARRIER++; else if(wNum>9&&r>0.8) comp.HEALER++; else if(wNum>7&&r>0.65) comp.GHOST++;
+    else if(wNum>4&&r>0.5) comp.FLYER++; else if(wNum>3&&r>0.4) comp.TANK++; else if(wNum>1&&r>0.3) comp.RUNNER++; else comp.NORMAL++;
+  } return comp;
 }
 
 function updateWavePreview() {
-  const nextWave = waveNumber + 1;
-  const comp = getWaveComposition(nextWave);
-  let html = '';
-  for (const [type, count] of Object.entries(comp)) {
-    if (count > 0) {
-      const col = WAVE_COLORS[type];
-      html += `<span class="wave-pill" style="background:${col}22;border:1px solid ${col};color:${col};">${count} ${type}</span>`;
-    }
-  }
+  const comp = getWaveComposition(waveNumber + 1); let html = '';
+  for(const[t,c] of Object.entries(comp)) if(c>0) html += `<span class="wave-pill" style="background:${WAVE_COLORS[t]}22;border:1px solid ${WAVE_COLORS[t]};color:${WAVE_COLORS[t]};">${c} ${t}</span>`;
   document.getElementById('waveComposition').innerHTML = html;
 }
 
-// ── Selection UI ───────────────────────────────
 function updateSelectionUI() {
   const side = document.getElementById('statsContent');
-
-  if (!selectedTower && !selectedEnemy) {
-    document.getElementById('upgradeMenu').style.display = 'none';
-    side.innerHTML = '<p style="color:#aaa;text-align:center;margin-top:30px;font-size:11px;">Select a tower or enemy to view stats.</p>';
-    return;
-  }
+  if (!selectedTower && !selectedEnemy) { side.innerHTML = '<p style="color:#aaa;text-align:center;margin-top:30px;">Select a unit.</p>'; return; }
+  const row = (lbl, val, col='white') => `<div class="stat-row"><span>${lbl}</span><span style="color:${col}">${val}</span></div>`;
 
   if (selectedEnemy) {
-    document.getElementById('upgradeMenu').style.display = 'none';
-    let h = `
-      <h3 style="margin-top:0;border-bottom:2px solid ${selectedEnemy.color};padding-bottom:5px;font-size:13px;">${selectedEnemy.type}</h3>
-      <div class="stat-row"><span>HP:</span><span style="color:#ff4444;">${Math.max(0, Math.ceil(selectedEnemy.health))} / ${selectedEnemy.maxHealth}</span></div>
-      <div class="stat-row"><span>Armor:</span><span style="color:#aaa;">${selectedEnemy.armor.toFixed(1)}</span></div>
-    `;
-    if (selectedEnemy.meltTicks > 0) h += `<div class="stat-row"><span>Status:</span><span style="color:#FF5722;">Melting!</span></div>`;
-    if (selectedEnemy.slowTicks  > 0) h += `<div class="stat-row"><span>Status:</span><span style="color:#29b6f6;">Slowed!</span></div>`;
-    h += `
-      <div class="stat-row"><span>Speed:</span><span>${selectedEnemy.speed.toFixed(2)}</span></div>
-      <div class="stat-row"><span>Bounty:</span><span style="color:#ffd700;">$${selectedEnemy.reward}</span></div>
-    `;
-    side.innerHTML = h;
-    return;
+    let h = `<h3 style="border-bottom:2px solid ${selectedEnemy.color};padding-bottom:5px;">${selectedEnemy.type}</h3>`;
+    h += row('HP:', `${Math.max(0, Math.ceil(selectedEnemy.health))} / ${selectedEnemy.maxHealth}`, '#ff4444');
+    h += row('Armor:', selectedEnemy.armor.toFixed(1), '#aaa');
+    if (selectedEnemy.meltTicks>0) h += row('Status:', 'Melting!', '#FF5722');
+    if (selectedEnemy.slowTicks>0) h += row('Status:', 'Slowed!', '#29b6f6');
+    h += row('Speed:', selectedEnemy.speed.toFixed(2)); h += row('Bounty:', `$${selectedEnemy.reward}`, '#ffd700');
+    side.innerHTML = h; return;
   }
 
-  document.getElementById('upgradeMenu').style.display = 'flex';
-  document.getElementById('targetBtn').innerText = selectedTower.targetMode;
-
-  const isBuff  = !!TOWER_TYPES[selectedTower.type].isBuff;
-  const isFlame = !!TOWER_TYPES[selectedTower.type].isFlame;
-  const isIce   = !!TOWER_TYPES[selectedTower.type].isIce;
-  const isAccel = !!TOWER_TYPES[selectedTower.type].isAccel;
-  const isRail  = !!TOWER_TYPES[selectedTower.type].isRail;
-  const isFarm  = !!TOWER_TYPES[selectedTower.type].isFarm;
-
-  document.getElementById('targetBtn').style.display           = (isBuff || isFarm) ? 'none'  : 'block';
-  document.getElementById('buffSpecialization').style.display  = isBuff  ? 'flex'  : 'none';
-  document.getElementById('flameUpgrades').style.display       = isFlame ? 'flex'  : 'none';
-  document.getElementById('iceUpgrades').style.display         = isIce   ? 'flex'  : 'none';
-  document.getElementById('accelUpgrades').style.display       = isAccel ? 'flex'  : 'none';
-  
-  const stdUps = document.getElementById('standardUpgrades');
-  if (stdUps) stdUps.style.display = (isBuff || isFarm) ? 'none' : 'flex';
-  
-  const farmUps = document.getElementById('farmUpgrades');
-  if (farmUps) {
-      farmUps.style.display = isFarm ? 'flex' : 'none';
-      if (isFarm) {
-          const btnFarm = document.getElementById('btnUpgradeFarm');
-          if (btnFarm) {
-              if (selectedTower.level < 5) {
-                  btnFarm.innerText = `Yield $${FARM_UPGRADE_COSTS[selectedTower.level]}`;
-                  btnFarm.style.display = 'block';
-              } else {
-                  btnFarm.innerText = `MAX LEVEL`;
-              }
-          }
-      }
-  }
-
-  const btnRadar = document.getElementById('btnUpgradeRadar');
-  if (btnRadar) {
-      if (isBuff || isFarm) {
-        btnRadar.style.display = 'none';
-      } else {
-        btnRadar.style.display = 'inline-block';
-        if (selectedTower.type === 'SNIPER') {
-          btnRadar.innerText = 'Radar (Native)'; btnRadar.style.opacity = '0.5';
-        } else if (selectedTower.upgrades.radar > 0) {
-          btnRadar.innerText = 'Radar (MAX)'; btnRadar.style.opacity = '0.5';
-        } else {
-          btnRadar.innerText = 'Radar $150'; btnRadar.style.opacity = '1';
-        }
-      }
-  }
-
-  if (isBuff) {
-    document.getElementById('btnUpgradeSpeed').innerText  = `Spd Pot $${selectedTower.upgrades.speed  * 30}`;
-    document.getElementById('btnUpgradeDamage').innerText = `Pwr Pot $${selectedTower.upgrades.damage * 40}`;
-    document.getElementById('btnUpgradeRange').innerText  = `Aura    $${selectedTower.upgrades.range  * 25}`;
-  } else if (isAccel) {
-    document.getElementById('btnUpgradeSpeed').innerText    = `Recharge $${selectedTower.upgrades.speed  * 50}`;
-    document.getElementById('btnUpgradeDamage').innerText   = `Power $${selectedTower.upgrades.damage * 60}`;
-    document.getElementById('btnUpgradeRange').innerText    = `Range $${selectedTower.upgrades.range  * 40}`;
-    document.getElementById('btnUpgradeDuration').innerText = `Duration $${selectedTower.upgrades.duration * 50}`;
-  } else if (!isFarm) {
-    document.getElementById('btnUpgradeSpeed').innerText  = `Speed $${selectedTower.upgrades.speed  * 30}`;
-    document.getElementById('btnUpgradeDamage').innerText = `Power $${selectedTower.upgrades.damage * 40}`;
-    document.getElementById('btnUpgradeRange').innerText  = `Range $${selectedTower.upgrades.range  * 25}`;
-  }
-  
-  if (isFlame) document.getElementById('btnUpgradeMelt').innerText = `Def Melt $${(selectedTower.meltLevel + 1) * 50}`;
-  if (isIce)   document.getElementById('btnUpgradeSlow').innerText = `Slow Pwr $${(selectedTower.slowLevel  + 1) * 40}`;
-
+  const t = selectedTower, ty = TOWER_TYPES[t.type];
+  const isFarm = ty.isFarm, isBuff = ty.isBuff, isAccel = ty.isAccel, isRail = ty.isRail;
   let spend = 0;
-  if (isFarm) {
-      for(let i=1; i<selectedTower.level; i++) spend += FARM_UPGRADE_COSTS[i];
-  } else {
-      spend = (selectedTower.upgrades.speed  - 1) * (isAccel ? 50 : 30) +
-              (selectedTower.upgrades.damage - 1) * (isAccel ? 60 : 40) +
-              (selectedTower.upgrades.range  - 1) * (isAccel ? 40 : 25) +
-              (selectedTower.upgrades.duration - 1) * 50 +
-              (selectedTower.upgrades.radar * 150) +
-              (selectedTower.meltLevel * 50) +
-              (selectedTower.slowLevel * 40);
-  }
-  
-  const sellVal = Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2);
-  const hasRadar = selectedTower.type === 'SNIPER' || selectedTower.upgrades.radar > 0;
-  const radarStr = hasRadar ? `<span style="color:#00E676;">Active</span>` : `<span style="color:#aaa;">None</span>`;
+  if(isFarm) for(let i=1; i<t.level; i++) spend += FARM_UPGRADE_COSTS[i];
+  else spend = (t.upgrades.speed-1)*(isAccel?50:30) + (t.upgrades.damage-1)*(isAccel?60:40) + (t.upgrades.range-1)*(isAccel?40:25) + (t.upgrades.duration-1)*50 + t.upgrades.radar*150 + t.meltLevel*50 + t.slowLevel*40;
+  const sellVal = Math.floor(ty.cost/2 + spend/2);
+  const radarStr = (t.type === 'SNIPER' || t.upgrades.radar > 0) ? `<span style="color:#00E676;">Active</span>` : `<span style="color:#aaa;">None</span>`;
 
-  let h = `
-    <h3 style="margin-top:0;border-bottom:2px solid ${selectedTower.color};padding-bottom:5px;font-size:13px;">${selectedTower.type} TOWER</h3>
-    <div class="stat-row"><span>Level:</span><span style="color:white;">${selectedTower.level}</span></div>
-    <div class="stat-row"><span>Sell:</span><span style="color:#ffd700;">$${sellVal}</span></div><br>
-  `;
+  let h = `<h3 style="border-bottom:2px solid ${t.color};padding-bottom:5px;">${t.type} TOWER</h3>${row('Level:', t.level)}${row('Sell:', `$${sellVal}`, '#ffd700')}<br>`;
 
   if (isFarm) {
-    h += `
-      <div class="stat-row"><span>Income:</span><span style="color:#FFD700;">+$${selectedTower.income}/wave</span></div>
-      <div class="stat-row"><span>Total Gen:</span><span style="color:#FFD700;">$${selectedTower.totalGenerated}</span></div>
-      <div class="stat-row"><span>Limit:</span><span style="color:white;">${towers.filter(t=>t.isFarm).length} / 8</span></div>
-    `;
+    h += row('Income:', `+$${t.income}/wave`, '#FFD700'); h += row('Total Gen:', `$${t.totalGenerated}`, '#FFD700'); h += row('Limit:', `${towers.filter(x=>x.isFarm).length} / 8`);
   } else if (isBuff) {
-    h += `
-      <div class="stat-row"><span>Aura Radius:</span><span>${selectedTower.range}</span></div>
-      <div class="stat-row"><span>Buff:</span><span style="color:#FFD700;">${selectedTower.buffSpec}</span></div>
-    `;
+    h += row('Aura Radius:', t.range); h += row('Buffing:', t.buffSpec, '#FFD700');
   } else if (isAccel) {
-    const dmgCol = selectedTower.damage > selectedTower.baseDamage ? '#FFD700' : 'white';
-    const rngCol = selectedTower.range > selectedTower.baseRange ? '#FFD700' : 'white';
-    const spdCol = selectedTower.reloadTime < selectedTower.baseReload ? '#FFD700' : 'white';
-    const durCol = selectedTower.duration > selectedTower.baseDuration ? '#FFD700': 'white';
-    h += `
-      <div class="stat-row"><span>Damage:</span><span style="color:${dmgCol};">${selectedTower.damage.toFixed(1)}/tick</span></div>
-      <div class="stat-row"><span>Range:</span><span style="color:${rngCol};">${selectedTower.range}</span></div>
-      <div class="stat-row"><span>Downtime:</span><span style="color:${spdCol};">${(selectedTower.reloadTime / 60).toFixed(1)}s</span></div>
-      <div class="stat-row"><span>Beam Time:</span><span style="color:${durCol};">${(selectedTower.duration / 60).toFixed(1)}s</span></div>
-      <div class="stat-row"><span>Sensors:</span>${radarStr}</div>
-      <div class="stat-row"><span>Total Dmg:</span><span style="color:#FFD700;">${Math.floor(selectedTower.damageDealt)}</span></div>
-    `;
+    h += row('Damage:', `${t.damage.toFixed(1)}/tk`, t.damage > t.baseDamage ? '#FFD700' : 'white');
+    h += row('Range:', t.range, t.range > t.baseRange ? '#FFD700' : 'white');
+    h += row('Downtime:', `${(t.reloadTime/60).toFixed(1)}s`, t.reloadTime < t.baseReload ? '#FFD700' : 'white');
+    h += row('Beam Time:', `${(t.duration/60).toFixed(1)}s`, t.duration > t.baseDuration ? '#FFD700' : 'white');
+    h += row('Sensors:', radarStr); h += row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
   } else {
-    if (isRail && !selectedTower.hasSpotter) {
-        h += `<div style="color:#ff4444; font-weight:bold; text-align:center;">OFFLINE: NEEDS SPOTTER</div>`;
-    }
-    const aps = (60 / selectedTower.reloadTime).toFixed(1);
-    const dmgCol = selectedTower.damage > selectedTower.baseDamage ? '#FFD700' : 'white';
-    const rngCol = selectedTower.range > selectedTower.baseRange ? '#FFD700' : 'white';
-    const spdCol = selectedTower.reloadTime < selectedTower.baseReload ? '#FFD700' : 'white';
-    h += `
-      <div class="stat-row"><span>Damage:</span><span style="color:${dmgCol};">${selectedTower.damage.toFixed(1)}</span></div>
-      <div class="stat-row"><span>Range:</span><span style="color:${rngCol};">${selectedTower.range}</span></div>
-      <div class="stat-row"><span>Fire Rate:</span><span style="color:${spdCol};">${aps}/s</span></div>
-      <div class="stat-row"><span>Sensors:</span>${radarStr}</div>
-      <div class="stat-row"><span>Total Dmg:</span><span style="color:#FFD700;">${Math.floor(selectedTower.damageDealt)}</span></div>
-    `;
-    if (isFlame) h += `<div class="stat-row"><span>Melt Lvl:</span><span style="color:#FF5722;">${selectedTower.meltLevel}</span></div>`;
-    if (isIce)   h += `<div class="stat-row"><span>Slow Lvl:</span><span style="color:#29b6f6;">${selectedTower.slowLevel}</span></div>`;
+    if (isRail && !t.hasSpotter) h += `<div style="color:#ff4444; font-weight:bold; text-align:center;">OFFLINE: NEEDS SPOTTER</div>`;
+    h += row('Damage:', t.damage.toFixed(1), t.damage > t.baseDamage ? '#FFD700' : 'white');
+    h += row('Range:', t.range, t.range > t.baseRange ? '#FFD700' : 'white');
+    h += row('Fire Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime < t.baseReload ? '#FFD700' : 'white');
+    h += row('Sensors:', radarStr); h += row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
+    if (ty.isFlame) h += row('Melt Lvl:', t.meltLevel, '#FF5722'); if (ty.isIce) h += row('Slow Lvl:', t.slowLevel, '#29b6f6');
   }
 
+  h += `<div class="upgrades-section" style="margin-top:10px; border-top:1px solid #555; padding-top:10px; display:flex; flex-direction:column; gap:4px;">`;
+  if (!isFarm && !isBuff) h += `<button onclick="cycleTargeting()">Target: ${t.targetMode}</button>`;
+  
+  if (isBuff) h += `<div style="display:flex; gap:4px;"><button class="buff-choice" onclick="setBuffSpec('SPEED')" style="flex:1; ${t.buffSpec==='SPEED'?'border:2px solid #fff':''}">Speed</button><button class="buff-choice" onclick="setBuffSpec('DAMAGE')" style="flex:1; ${t.buffSpec==='DAMAGE'?'border:2px solid #fff':''}">Dmg</button><button class="buff-choice" onclick="setBuffSpec('RANGE')" style="flex:1; ${t.buffSpec==='RANGE'?'border:2px solid #fff':''}">Range</button></div>`;
+
+  let rBtn = (!isFarm && !isBuff) ? (t.type === 'SNIPER' ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (Native)</button>` : (t.upgrades.radar > 0 ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (MAX)</button>` : `<button class="radar-btn" onclick="upgradeRadar()" style="flex:1;">Radar $150</button>`)) : '';
+
+  if (isFarm) {
+      if (t.level < 5) h += `<button class="farm-btn" onclick="upgradeFarm()">Upgrade Yield $${FARM_UPGRADE_COSTS[t.level]}</button>`; else h += `<button class="farm-btn" style="opacity:0.5;">Yield (MAX)</button>`;
+  } else if (isBuff) {
+      h += `<div style="display:flex;gap:4px;"><button onclick="upgradeSpeed()" style="flex:1">Spd Pot $${t.upgrades.speed*30}</button><button onclick="upgradeDamage()" style="flex:1">Pwr Pot $${t.upgrades.damage*40}</button></div><button onclick="upgradeRange()">Aura Radius $${t.upgrades.range*25}</button>`;
+  } else if (isAccel) {
+      h += `<div style="display:flex;gap:4px;"><button onclick="upgradeSpeed()" style="flex:1">Recharge $${t.upgrades.speed*50}</button><button onclick="upgradeDamage()" style="flex:1">Power $${t.upgrades.damage*60}</button></div><div style="display:flex;gap:4px;"><button onclick="upgradeRange()" style="flex:1">Range $${t.upgrades.range*40}</button><button class="accel-choice" onclick="upgradeAccelDuration()" style="flex:1">Duration $${t.upgrades.duration*50}</button></div><div style="display:flex;gap:4px;">${rBtn}</div>`;
+  } else {
+      h += `<div style="display:flex;gap:4px;"><button onclick="upgradeSpeed()" style="flex:1">Speed $${t.upgrades.speed*30}</button><button onclick="upgradeDamage()" style="flex:1">Power $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;"><button onclick="upgradeRange()" style="flex:1">Range $${t.upgrades.range*25}</button>${rBtn}</div>`;
+      if (ty.isFlame) h += `<button class="flame-choice" onclick="upgradeDefenseMelt()">Def Melt $${(t.meltLevel+1)*50}</button>`;
+      if (ty.isIce) h += `<button class="ice-btn" onclick="upgradeSlowPower()">Slow Pwr $${(t.slowLevel+1)*40}</button>`;
+  }
+  h += `<button class="remove-btn" onclick="removeTower()">SELL $${sellVal}</button></div>`;
   side.innerHTML = h;
 }
-
-// ── Classes ────────────────────────────────────
 
 class Enemy {
   constructor(path, typeKey) {
     const s = ENEMY_TYPES[typeKey];
-    this.path      = path;
-    this.pathIndex = 0;
-    this.type      = typeKey;
-    this.x         = startPos.x * TILE_SIZE + TILE_SIZE / 2;
-    this.y         = startPos.y * TILE_SIZE + TILE_SIZE / 2;
-    this.baseSpeed = s.speed;
-    this.speed     = s.speed;
-    this.color     = s.color;
-    this.reward    = s.reward;
-    this.maxHealth = Math.floor(s.hp * Math.pow(1.15, waveNumber));
-    this.health    = this.maxHealth;
-    this.armor     = s.armor + Math.floor(waveNumber / 5);
-    this.meltTicks = 0;
-    this.slowTicks = 0;
-    this.slowFactor = 1;
-    this.alive     = true;
-    
-    this.isFlying  = !!s.isFlying;
-    this.isCamo    = !!s.isCamo;
-    this.isHealer  = !!s.isHealer;
-    this.spawns    = s.spawns || null;
-    this.spawnCount= s.spawnCount || 0;
+    this.path = path; this.pathIndex = 0; this.type = typeKey;
+    this.x = startPos.x * TILE_SIZE + TILE_SIZE / 2; this.y = startPos.y * TILE_SIZE + TILE_SIZE / 2;
+    this.baseSpeed = s.speed; this.speed = s.speed; this.color = s.color; this.reward = s.reward;
+    this.maxHealth = Math.floor(s.hp * Math.pow(1.15, waveNumber)); this.health = this.maxHealth;
+    this.armor = s.armor + Math.floor(waveNumber / 5); this.meltTicks = 0; this.slowTicks = 0; this.slowFactor = 1; this.alive = true;
+    this.isFlying = !!s.isFlying; this.isCamo = !!s.isCamo; this.isHealer = !!s.isHealer; this.spawns = s.spawns || null; this.spawnCount = s.spawnCount || 0;
   }
-
   update() {
     if (!this.alive) return;
-
     this.speed = this.slowTicks > 0 ? this.baseSpeed * this.slowFactor : this.baseSpeed;
-    if (this.slowTicks > 0) this.slowTicks--;
-    if (this.meltTicks > 0) this.meltTicks--;
-
-    if (this.isHealer && frameCount % 60 === 0) {
-      spawnParticles(this.x, this.y, '#4CAF50', 5);
-      enemies.forEach(e => {
-        if (e !== this && Math.hypot(e.x - this.x, e.y - this.y) <= 80) {
-          e.health = Math.min(e.maxHealth, e.health + 5);
-        }
-      });
-    }
-
+    if (this.slowTicks > 0) this.slowTicks--; if (this.meltTicks > 0) this.meltTicks--;
+    if (this.isHealer && frameCount % 60 === 0) { spawnParticles(this.x, this.y, '#4CAF50', 5); enemies.forEach(e => { if (e !== this && Math.hypot(e.x - this.x, e.y - this.y) <= 80) e.health = Math.min(e.maxHealth, e.health + 5); }); }
     if (this.isFlying) {
-      const ex = endPos.x * TILE_SIZE + TILE_SIZE / 2;
-      const ey = endPos.y * TILE_SIZE + TILE_SIZE / 2;
-      const dist = Math.hypot(ex - this.x, ey - this.y);
-      if (dist < this.speed) {
-        this.alive = false; lives--; return;
-      }
-      this.x += ((ex - this.x) / dist) * this.speed;
-      this.y += ((ey - this.y) / dist) * this.speed;
+      const ex = endPos.x * TILE_SIZE + TILE_SIZE / 2, ey = endPos.y * TILE_SIZE + TILE_SIZE / 2, dist = Math.hypot(ex - this.x, ey - this.y);
+      if (dist < this.speed) { this.alive = false; lives--; return; }
+      this.x += ((ex - this.x) / dist) * this.speed; this.y += ((ey - this.y) / dist) * this.speed;
     } else {
-      if (!this.path || this.pathIndex >= this.path.length) {
-        this.alive = false;
-        if (this.pathIndex >= this.path.length) lives--;
-        return;
-      }
-      const target = this.path[this.pathIndex];
-      const tx = target.x * TILE_SIZE + TILE_SIZE / 2;
-      const ty = target.y * TILE_SIZE + TILE_SIZE / 2;
-      const dist = Math.hypot(tx - this.x, ty - this.y);
-
-      if (dist < this.speed) {
-        this.pathIndex++;
-      } else {
-        this.x += ((tx - this.x) / dist) * this.speed;
-        this.y += ((ty - this.y) / dist) * this.speed;
-      }
+      if (!this.path || this.pathIndex >= this.path.length) { this.alive = false; if (this.pathIndex >= this.path.length) lives--; return; }
+      const target = this.path[this.pathIndex], tx = target.x * TILE_SIZE + TILE_SIZE / 2, ty = target.y * TILE_SIZE + TILE_SIZE / 2, dist = Math.hypot(tx - this.x, ty - this.y);
+      if (dist < this.speed) this.pathIndex++; else { this.x += ((tx - this.x) / dist) * this.speed; this.y += ((ty - this.y) / dist) * this.speed; }
     }
-
     if (this.health <= 0) { 
-      this.alive = false; 
-      gold += this.reward + research.bounty; 
-      spawnParticles(this.x, this.y, this.color, 15, 1.5); 
-      
-      if (this.spawns) {
-        for(let i=0; i<this.spawnCount; i++) {
-          let spawn = new Enemy(this.path, this.spawns);
-          spawn.x = this.x + (Math.random()*20 - 10);
-          spawn.y = this.y + (Math.random()*20 - 10);
-          spawn.pathIndex = this.pathIndex;
-          enemies.push(spawn);
-        }
-      }
+      this.alive = false; gold += this.reward + research.bounty; spawnParticles(this.x, this.y, this.color, 15, 1.5); 
+      if (this.spawns) for(let i=0; i<this.spawnCount; i++) { let spawn = new Enemy(this.path, this.spawns); spawn.x = this.x + (Math.random()*20 - 10); spawn.y = this.y + (Math.random()*20 - 10); spawn.pathIndex = this.pathIndex; enemies.push(spawn); }
     }
   }
-
-  takeDamage(dmg) {
-    const effectiveArmor = Math.max(0, this.armor - research.piercing);
-    const actualDmg = Math.max(0.5, dmg - effectiveArmor);
-    this.health -= actualDmg;
-    return actualDmg;
-  }
-
+  takeDamage(dmg) { const actualDmg = Math.max(0.5, dmg - Math.max(0, this.armor - research.piercing)); this.health -= actualDmg; return actualDmg; }
   draw() {
-    if (selectedEnemy === this) {
-      ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath();
-      ctx.arc(this.x, this.y, (this.type === 'BOSS' ? 18 : 12) + 4, 0, Math.PI * 2); ctx.stroke();
-    }
-    
-    ctx.globalAlpha = this.isCamo ? 0.4 : 1.0;
-    ctx.fillStyle = this.slowTicks > 0 ? '#b3e5fc' : this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.type === 'BOSS' ? 18 : 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-
-    if (this.meltTicks > 0) {
-      ctx.strokeStyle = '#ff1744'; ctx.lineWidth = 2; ctx.beginPath();
-      ctx.arc(this.x, this.y, 14, 0, Math.PI * 2); ctx.stroke();
-    }
-    if (this.slowTicks > 0) {
-      ctx.strokeStyle = '#29b6f6'; ctx.lineWidth = 2; ctx.beginPath();
-      ctx.arc(this.x, this.y, this.type === 'BOSS' ? 20 : 14, 0, Math.PI * 2); ctx.stroke();
-    }
-
-    ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 22, 30, 4);
-    ctx.fillStyle = 'lime'; ctx.fillRect(this.x - 15, this.y - 22, (this.health / this.maxHealth) * 30, 4);
+    if (selectedEnemy === this) { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, (this.type === 'BOSS' ? 18 : 12) + 4, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.globalAlpha = this.isCamo ? 0.4 : 1.0; ctx.fillStyle = this.slowTicks > 0 ? '#b3e5fc' : this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.type === 'BOSS' ? 18 : 12, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1.0;
+    if (this.meltTicks > 0) { ctx.strokeStyle = '#ff1744'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, 14, 0, Math.PI * 2); ctx.stroke(); }
+    if (this.slowTicks > 0) { ctx.strokeStyle = '#29b6f6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, this.type === 'BOSS' ? 20 : 14, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 22, 30, 4); ctx.fillStyle = 'lime'; ctx.fillRect(this.x - 15, this.y - 22, (this.health / this.maxHealth) * 30, 4);
   }
 }
 
 class Tower {
   constructor(gx, gy, typeKey) {
-    this.gx   = gx;
-    this.gy   = gy;
-    this.x    = gx * TILE_SIZE + TILE_SIZE / 2;
-    this.y    = gy * TILE_SIZE + TILE_SIZE / 2;
-    this.type = typeKey;
-
-    this.baseRange    = TOWER_TYPES[typeKey].range;
-    this.baseReload   = TOWER_TYPES[typeKey].reload;
-    this.baseDamage   = TOWER_TYPES[typeKey].damage;
-    this.baseDuration = TOWER_TYPES[typeKey].duration || 0; 
-
-    this.range      = this.baseRange;
-    this.reloadTime = this.baseReload;
-    this.damage     = this.baseDamage;
-    this.duration   = this.baseDuration;
-
-    this.color      = TOWER_TYPES[typeKey].color;
-    this.level      = 1;
-    this.timer      = 0;
-    this.targetMode = 'First';
-    this.upgrades   = { speed: 1, damage: 1, range: 1, duration: 1, radar: 0 };
-    this.buffSpec   = 'SPEED';
-    this.meltLevel  = 0;
-    this.slowLevel  = 0;
-    this.damageDealt= 0; 
-    
-    this.fireTimer     = 0; 
-    this.rechargeTimer = 0;
-    this.currentTarget = null;
-    
-    this.isRail     = !!TOWER_TYPES[typeKey].isRail;
-    this.isFarm     = !!TOWER_TYPES[typeKey].isFarm;
-    this.hasSpotter = false;
-    
-    this.income = TOWER_TYPES[typeKey].baseIncome || 0;
-    this.totalGenerated = 0;
-
-    this.railFireTimer = 0;
-    this.beamEndX = 0;
-    this.beamEndY = 0;
+    this.gx = gx; this.gy = gy; this.x = gx * TILE_SIZE + TILE_SIZE / 2; this.y = gy * TILE_SIZE + TILE_SIZE / 2; this.type = typeKey;
+    this.baseRange = TOWER_TYPES[typeKey].range; this.baseReload = TOWER_TYPES[typeKey].reload; this.baseDamage = TOWER_TYPES[typeKey].damage; this.baseDuration = TOWER_TYPES[typeKey].duration || 0; 
+    this.range = this.baseRange; this.reloadTime = this.baseReload; this.damage = this.baseDamage; this.duration = this.baseDuration;
+    this.color = TOWER_TYPES[typeKey].color; this.level = 1; this.timer = 0; this.targetMode = 'First';
+    this.upgrades = { speed: 1, damage: 1, range: 1, duration: 1, radar: 0 }; this.buffSpec = 'SPEED'; this.meltLevel = 0; this.slowLevel = 0; this.damageDealt = 0; 
+    this.fireTimer = 0; this.rechargeTimer = 0; this.currentTarget = null;
+    this.isRail = !!TOWER_TYPES[typeKey].isRail; this.isFarm = !!TOWER_TYPES[typeKey].isFarm; this.hasSpotter = false;
+    this.income = TOWER_TYPES[typeKey].baseIncome || 0; this.totalGenerated = 0;
+    this.railFireTimer = 0; this.beamEndX = 0; this.beamEndY = 0;
   }
-
   applyBuffs(allTowers) {
-    this.range      = this.baseRange;
-    this.damage     = this.baseDamage;
-    this.reloadTime = this.baseReload;
-    this.duration   = this.baseDuration;
-    this.hasSpotter = false;
-
+    this.range = this.baseRange; this.damage = this.baseDamage; this.reloadTime = this.baseReload; this.duration = this.baseDuration; this.hasSpotter = false;
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
-
-    let speedMod = 1, dmgMod = 1, rangeMod = 0;
-    let hasAppliedStatsBuff = false;
-
+    let speedMod = 1, dmgMod = 1, rangeMod = 0, hasAppliedStatsBuff = false;
     allTowers.forEach(t => {
       if (TOWER_TYPES[t.type].isBuff && Math.hypot(this.x - t.x, this.y - t.y) <= t.range) {
         this.hasSpotter = true; 
-        
         if (!hasAppliedStatsBuff) {
             if (t.buffSpec === 'SPEED')  speedMod *= Math.max(0.2, 0.85 - (t.upgrades.speed  * 0.05));
             if (t.buffSpec === 'DAMAGE') dmgMod   *= 1.2 + (t.upgrades.damage * 0.2);
@@ -672,653 +271,216 @@ class Tower {
         }
       }
     });
-
-    this.reloadTime *= speedMod;
-    this.damage     *= dmgMod;
-    this.range      += rangeMod;
+    this.reloadTime *= speedMod; this.damage *= dmgMod; this.range += rangeMod;
   }
-
   update() {
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
     if (this.isRail && !this.hasSpotter) return; 
     
     if (TOWER_TYPES[this.type].isIce) {
       enemies.forEach(e => {
-        const hasRadar = this.upgrades.radar > 0;
-        if ((e.isCamo || e.isFlying) && !hasRadar) return;
-        if (Math.hypot(e.x - this.x, e.y - this.y) <= this.range) {
-          e.slowTicks = Math.max(e.slowTicks, 10); 
-          e.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
-        }
+        if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return;
+        if (Math.hypot(e.x - this.x, e.y - this.y) <= this.range) { e.slowTicks = Math.max(e.slowTicks, 10); e.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05); }
       });
     }
 
     if (TOWER_TYPES[this.type].isAccel) {
       if (this.rechargeTimer > 0) { this.rechargeTimer--; return; }
-      let inRange = enemies.filter(e => {
-        const hasRadar = this.upgrades.radar > 0;
-        if (e.isCamo && !hasRadar) return false;
-        if (e.isFlying && !hasRadar) return false; 
-        return Math.hypot(e.x - this.x, e.y - this.y) <= this.range;
-      });
-
+      let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return Math.hypot(e.x - this.x, e.y - this.y) <= this.range; });
       if (this.fireTimer > 0) {
         if (inRange.length > 0) {
-          if      (this.targetMode === 'First')    inRange.sort((a, b) => b.pathIndex - a.pathIndex);
-          else if (this.targetMode === 'Last')     inRange.sort((a, b) => a.pathIndex - b.pathIndex);
-          else if (this.targetMode === 'Strongest')inRange.sort((a, b) => b.health    - a.health);
-          else if (this.targetMode === 'Weakest')  inRange.sort((a, b) => a.health    - b.health);
-          else if (this.targetMode === 'Random')   inRange.sort(() => Math.random() - 0.5);
-          
+          if (this.targetMode === 'First') inRange.sort((a, b) => b.pathIndex - a.pathIndex); else if (this.targetMode === 'Last') inRange.sort((a, b) => a.pathIndex - b.pathIndex); else if (this.targetMode === 'Strongest') inRange.sort((a, b) => b.health - a.health); else if (this.targetMode === 'Weakest') inRange.sort((a, b) => a.health - b.health); else if (this.targetMode === 'Random') inRange.sort(() => Math.random() - 0.5);
           this.currentTarget = inRange[0]; 
-          
-          if (this.fireTimer % 15 === 0) {
-            const dealt = this.currentTarget.takeDamage(this.damage);
-            this.damageDealt += dealt;
-            spawnParticles(this.currentTarget.x, this.currentTarget.y, '#E040FB', 8, 2);
-            playSFX('hit');
-          }
-        } else {
-          this.currentTarget = null;
-        }
-        
-        this.fireTimer--;
-        if (this.fireTimer <= 0) { this.rechargeTimer = this.reloadTime; this.currentTarget = null; }
+          if (this.fireTimer % 15 === 0) { this.damageDealt += this.currentTarget.takeDamage(this.damage); spawnParticles(this.currentTarget.x, this.currentTarget.y, '#E040FB', 8, 2); playSFX('hit'); }
+        } else this.currentTarget = null;
+        this.fireTimer--; if (this.fireTimer <= 0) { this.rechargeTimer = this.reloadTime; this.currentTarget = null; }
         return;
       }
-
-      if (inRange.length > 0) {
-        this.fireTimer = this.duration; this.currentTarget = inRange[0]; playSFX('sniper'); 
-      }
-      return;
+      if (inRange.length > 0) { this.fireTimer = this.duration; this.currentTarget = inRange[0]; playSFX('sniper'); } return;
     }
 
     this.timer++;
     if (this.timer >= this.reloadTime) {
       let inRange = enemies.filter(e => {
-        const hasRadar = this.type === 'SNIPER' || this.upgrades.radar > 0;
-        if (e.isCamo && !hasRadar) return false;
-        if (e.isFlying && !hasRadar) return false;
+        const hr = this.type === 'SNIPER' || this.upgrades.radar > 0;
+        if ((e.isCamo || e.isFlying) && !hr) return false;
         return Math.hypot(e.x - this.x, e.y - this.y) <= this.range;
       });
-
       if (inRange.length > 0) {
-        if      (this.targetMode === 'First')    inRange.sort((a, b) => b.pathIndex - a.pathIndex);
-        else if (this.targetMode === 'Last')     inRange.sort((a, b) => a.pathIndex - b.pathIndex);
-        else if (this.targetMode === 'Strongest')inRange.sort((a, b) => b.health    - a.health);
-        else if (this.targetMode === 'Weakest')  inRange.sort((a, b) => a.health    - b.health);
-        else if (this.targetMode === 'Random')   inRange.sort(() => Math.random() - 0.5);
-
+        if (this.targetMode === 'First') inRange.sort((a, b) => b.pathIndex - a.pathIndex); else if (this.targetMode === 'Last') inRange.sort((a, b) => a.pathIndex - b.pathIndex); else if (this.targetMode === 'Strongest') inRange.sort((a, b) => b.health - a.health); else if (this.targetMode === 'Weakest') inRange.sort((a, b) => a.health - b.health); else if (this.targetMode === 'Random') inRange.sort(() => Math.random() - 0.5);
         const target = inRange[0];
-
         if (this.isRail) {
             playSFX('railgun');
             const angle = Math.atan2(target.y - this.y, target.x - this.x);
-            this.beamEndX = this.x + Math.cos(angle) * this.range;
-            this.beamEndY = this.y + Math.sin(angle) * this.range;
+            this.beamEndX = this.x + Math.cos(angle) * this.range; this.beamEndY = this.y + Math.sin(angle) * this.range;
             this.railFireTimer = 10; 
-
             enemies.forEach(e => {
                 const distToLine = Math.abs((this.beamEndY - this.y)*e.x - (this.beamEndX - this.x)*e.y + this.beamEndX*this.y - this.beamEndY*this.x) / this.range;
                 const dotProduct = (e.x - this.x)*(this.beamEndX - this.x) + (e.y - this.y)*(this.beamEndY - this.y);
-                
-                if (distToLine < 25 && dotProduct > 0 && Math.hypot(e.x - this.x, e.y - this.y) <= this.range + 25) {
-                    const dealt = e.takeDamage(this.damage);
-                    this.damageDealt += dealt;
-                    spawnParticles(e.x, e.y, '#00FFFF', 6);
-                }
+                if (distToLine < 25 && dotProduct > 0 && Math.hypot(e.x - this.x, e.y - this.y) <= this.range + 25) { this.damageDealt += e.takeDamage(this.damage); spawnParticles(e.x, e.y, '#00FFFF', 6); }
             });
-            this.timer = 0;
         } else {
             projectiles.push(new Projectile(this.x, this.y, target, this)); 
             if(this.type === 'SNIPER') playSFX('sniper'); else playSFX('shoot');
-            this.timer = 0;
         }
+        this.timer = 0;
       }
     }
   }
-
   draw() {
-    if (selectedTower === this && !this.isFarm) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
-      ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke();
-    }
-    
-    if (this.type === 'ACCEL' && this.fireTimer > 0 && this.currentTarget && this.currentTarget.alive) {
-      ctx.strokeStyle = '#E040FB'; ctx.lineWidth = Math.random() * 4 + 2; 
-      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.currentTarget.x, this.currentTarget.y); ctx.stroke();
-      ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
-    }
-
-    if (this.isRail && this.railFireTimer > 0) {
-      ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = Math.random() * 6 + 2; 
-      ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.beamEndX, this.beamEndY); ctx.stroke();
-      ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
-      this.railFireTimer--;
-    }
-    
-    ctx.fillStyle = (this.isRail && !this.hasSpotter) ? '#444' : this.color;
-    ctx.fillRect(this.gx * TILE_SIZE + 2, this.gy * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-    
-    if (this.isRail && !this.hasSpotter) {
-        ctx.fillStyle = 'red'; ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("NO SIGNAL", this.x, this.y - 10); ctx.textAlign = 'left';
-    }
-
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center';
-    let icon = this.type[0];
-    if (TOWER_TYPES[this.type].isBuff) icon = this.buffSpec[0];
-    else if (this.isRail) icon = 'R';
-    else if (this.isFarm) icon = '$';
-    ctx.fillText(icon, this.x, this.y + 3);
-    ctx.textAlign = 'left';
+    if (selectedTower === this && !this.isFarm) { ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke(); }
+    if (this.type === 'ACCEL' && this.fireTimer > 0 && this.currentTarget && this.currentTarget.alive) { ctx.strokeStyle = '#E040FB'; ctx.lineWidth = Math.random() * 4 + 2; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.currentTarget.x, this.currentTarget.y); ctx.stroke(); ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (this.isRail && this.railFireTimer > 0) { ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = Math.random() * 6 + 2; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.beamEndX, this.beamEndY); ctx.stroke(); ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke(); this.railFireTimer--; }
+    ctx.fillStyle = (this.isRail && !this.hasSpotter) ? '#444' : this.color; ctx.fillRect(this.gx * TILE_SIZE + 2, this.gy * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    if (this.isRail && !this.hasSpotter) { ctx.fillStyle = 'red'; ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center'; ctx.fillText("NO SIGNAL", this.x, this.y - 10); ctx.textAlign = 'left'; }
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center'; ctx.fillText(TOWER_TYPES[this.type].isBuff ? this.buffSpec[0] : (this.isRail ? 'R' : (this.isFarm ? '$' : this.type[0])), this.x, this.y + 3); ctx.textAlign = 'left';
   }
 }
 
 class Projectile {
   constructor(x, y, target, tower) {
-    this.x         = x;
-    this.y         = y;
-    this.target    = target;
-    this.tower     = tower; 
-    this.damage       = tower.damage;
-    this.color        = TOWER_TYPES[tower.type].bullet;
-    this.speed        = (tower.type === 'BOMB' ? 4 : 8); 
-    this.alive        = true;
-    this.isFlame      = !!TOWER_TYPES[tower.type].isFlame;
-    this.meltLevel    = tower.meltLevel;
-    this.isIce        = !!TOWER_TYPES[tower.type].isIce;
-    this.slowLevel    = tower.slowLevel;
-    this.splashRadius = TOWER_TYPES[tower.type].splashRadius || 0;
+    this.x = x; this.y = y; this.target = target; this.tower = tower; this.damage = tower.damage; this.color = TOWER_TYPES[tower.type].bullet; this.speed = (tower.type === 'BOMB' ? 4 : 8); this.alive = true; this.isFlame = !!TOWER_TYPES[tower.type].isFlame; this.meltLevel = tower.meltLevel; this.isIce = !!TOWER_TYPES[tower.type].isIce; this.slowLevel = tower.slowLevel; this.splashRadius = TOWER_TYPES[tower.type].splashRadius || 0;
   }
-
   update() {
-    const dx   = this.target.x - this.x;
-    const dy   = this.target.y - this.y;
-    const dist = Math.hypot(dx, dy);
-
+    const dx = this.target.x - this.x, dy = this.target.y - this.y, dist = Math.hypot(dx, dy);
     if (dist < 5 || !this.target.alive) {
         if (this.splashRadius > 0) {
-          playSFX('explosion');
-          spawnParticles(this.x, this.y, '#FF5722', 25, 2.0); 
-          
-          enemies.forEach(e => {
-            if (Math.hypot(e.x - this.x, e.y - this.y) <= this.splashRadius) {
-              const hasRadar = this.tower.type === 'SNIPER' || this.tower.upgrades.radar > 0;
-              if (e.isFlying && !hasRadar) return; 
-              const dealt = e.takeDamage(this.damage);
-              this.tower.damageDealt += dealt; 
-            }
-          });
-        } else {
-          if (this.target.alive) {
-            playSFX('hit');
-            spawnParticles(this.target.x, this.target.y, this.color, 4);
-            if (this.isFlame) {
-              this.target.meltTicks = 180;
-              this.target.armor = Math.max(0, this.target.armor - (0.2 + this.meltLevel * 0.3));
-            }
-            if (this.isIce) {
-              this.target.slowTicks  = 90 + this.slowLevel * 30;
-              this.target.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05);
-            }
-            const dealt = this.target.takeDamage(this.damage);
-            this.tower.damageDealt += dealt; 
-          }
+          playSFX('explosion'); spawnParticles(this.x, this.y, '#FF5722', 25, 2.0); 
+          enemies.forEach(e => { if (Math.hypot(e.x - this.x, e.y - this.y) <= this.splashRadius) { if (e.isFlying && (this.tower.type !== 'SNIPER' && this.tower.upgrades.radar === 0)) return; this.tower.damageDealt += e.takeDamage(this.damage); } });
+        } else if (this.target.alive) {
+          playSFX('hit'); spawnParticles(this.target.x, this.target.y, this.color, 4);
+          if (this.isFlame) { this.target.meltTicks = 180; this.target.armor = Math.max(0, this.target.armor - (0.2 + this.meltLevel * 0.3)); }
+          if (this.isIce) { this.target.slowTicks = 90 + this.slowLevel * 30; this.target.slowFactor = Math.max(0.2, 0.5 - this.slowLevel * 0.05); }
+          this.tower.damageDealt += this.target.takeDamage(this.damage); 
         }
         this.alive = false;
     }
-    this.x += (dx / dist) * this.speed;
-    this.y += (dy / dist) * this.speed;
+    this.x += (dx / dist) * this.speed; this.y += (dy / dist) * this.speed;
   }
-
-  draw() {
-    ctx.fillStyle = this.color; ctx.beginPath();
-    ctx.arc(this.x, this.y, this.splashRadius ? 6 : (this.isIce ? 5 : 4), 0, Math.PI * 2); ctx.fill();
-  }
+  draw() { ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.splashRadius ? 6 : (this.isIce ? 5 : 4), 0, Math.PI * 2); ctx.fill(); }
 }
-
-// ── Hover / path preview ───────────────────────
 
 function drawHoverPreview() {
   pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-  if (!buildType || hoverGx < 0 || hoverGy < 0) return;
-  if (!grid[hoverGy] || grid[hoverGy][hoverGx] !== 0) return;
-
-  const px = hoverGx * TILE_SIZE + TILE_SIZE / 2;
-  const py = hoverGy * TILE_SIZE + TILE_SIZE / 2;
-  const t  = TOWER_TYPES[buildType];
-
-  pCtx.fillStyle = 'rgba(255,255,255,0.07)';
-  pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-
-  if (!t.isFarm) {
-      pCtx.strokeStyle = t.color + '99'; pCtx.lineWidth = 1.5; pCtx.setLineDash([4, 4]);
-      pCtx.beginPath(); pCtx.arc(px, py, t.range, 0, Math.PI * 2); pCtx.stroke(); pCtx.setLineDash([]);
-  }
-
-  grid[hoverGy][hoverGx] = 1;
-  const testPath = findPath();
-  grid[hoverGy][hoverGx] = 0;
-
+  if (!buildType || hoverGx < 0 || hoverGy < 0 || (!grid[hoverGy] || grid[hoverGy][hoverGx] !== 0)) return;
+  const px = hoverGx * TILE_SIZE + TILE_SIZE / 2, py = hoverGy * TILE_SIZE + TILE_SIZE / 2, t  = TOWER_TYPES[buildType];
+  pCtx.fillStyle = 'rgba(255,255,255,0.07)'; pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  if (!t.isFarm) { pCtx.strokeStyle = t.color + '99'; pCtx.lineWidth = 1.5; pCtx.setLineDash([4, 4]); pCtx.beginPath(); pCtx.arc(px, py, t.range, 0, Math.PI * 2); pCtx.stroke(); pCtx.setLineDash([]); }
+  grid[hoverGy][hoverGx] = 1; const testPath = findPath(); grid[hoverGy][hoverGx] = 0;
   if (testPath || t.isFarm || MAP_DATA[currentMapIndex].type === "FIXED") {
-    pCtx.strokeStyle = 'rgba(100,255,100,0.35)'; pCtx.lineWidth = 2; pCtx.setLineDash([6, 4]);
-    pCtx.beginPath();
-    if (testPath && MAP_DATA[currentMapIndex].type !== "FIXED") {
-        testPath.forEach((p, i) => {
-          const wx = p.x * TILE_SIZE + TILE_SIZE / 2; const wy = p.y * TILE_SIZE + TILE_SIZE / 2;
-          if (i === 0) pCtx.moveTo(wx, wy); else pCtx.lineTo(wx, wy);
-        });
-        pCtx.stroke(); 
-    }
+    pCtx.strokeStyle = 'rgba(100,255,100,0.35)'; pCtx.lineWidth = 2; pCtx.setLineDash([6, 4]); pCtx.beginPath();
+    if (testPath && MAP_DATA[currentMapIndex].type !== "FIXED") { testPath.forEach((p, i) => { const wx = p.x * TILE_SIZE + TILE_SIZE / 2, wy = p.y * TILE_SIZE + TILE_SIZE / 2; if (i === 0) pCtx.moveTo(wx, wy); else pCtx.lineTo(wx, wy); }); pCtx.stroke(); }
     pCtx.setLineDash([]);
-  } else {
-    pCtx.fillStyle = 'rgba(255,0,0,0.15)';
-    pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-  }
+  } else { pCtx.fillStyle = 'rgba(255,0,0,0.15)'; pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE); }
 }
 
-canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  hoverGx = Math.floor((e.clientX - rect.left)  / TILE_SIZE);
-  hoverGy = Math.floor((e.clientY - rect.top)   / TILE_SIZE);
-  drawHoverPreview();
-});
+canvas.addEventListener('mousemove', e => { const rect = canvas.getBoundingClientRect(); hoverGx = Math.floor((e.clientX - rect.left) / TILE_SIZE); hoverGy = Math.floor((e.clientY - rect.top) / TILE_SIZE); drawHoverPreview(); });
+canvas.addEventListener('mouseleave', () => { hoverGx = -1; hoverGy = -1; pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height); });
 
-canvas.addEventListener('mouseleave', () => {
-  hoverGx = -1; hoverGy = -1;
-  pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-});
+window.startGame = (mIdx) => { currentMapIndex = mIdx; document.getElementById('mainMenu').style.display = 'none'; document.getElementById('game-root').style.display = 'flex'; const m = MAP_DATA[mIdx]; COLS = m.cols; ROWS = m.rows; canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE; pCanvas.width = COLS * TILE_SIZE; pCanvas.height = ROWS * TILE_SIZE; setupMap(m); restartGame(); };
+window.returnToMenu = () => { document.getElementById('game-root').style.display = 'none'; document.getElementById('mainMenu').style.display = 'flex'; isPaused = true; };
+window.buyResearch = (type) => { const costs = { bounty: 500, piercing: 600, interest: 750 }; if (gold >= costs[type]) { gold -= costs[type]; if (type === 'bounty') research.bounty += 5; if (type === 'piercing') research.piercing += 2; if (type === 'interest') research.interest += 0.02; const btn = document.getElementById('res_' + type); if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; } } };
+window.setBuildType = t => { buildType = buildType === t ? null : t; selectedTower = null; selectedEnemy = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); if (buildType) { const btn = document.getElementById('btn_' + buildType); if (btn) btn.classList.add('active-build'); } updateSelectionUI(); drawHoverPreview(); };
 
-// ── Global Actions ─────────────────────────────
+window.upgradeSpeed = () => { if (selectedTower && gold >= selectedTower.upgrades.speed * (selectedTower.type === 'ACCEL' ? 50 : 30)) { gold -= selectedTower.upgrades.speed * (selectedTower.type === 'ACCEL' ? 50 : 30); selectedTower.baseReload *= (selectedTower.type === 'ACCEL' ? 0.8 : 0.85); selectedTower.upgrades.speed++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI(); } };
+window.upgradeDamage = () => { if (selectedTower && gold >= selectedTower.upgrades.damage * (selectedTower.type === 'ACCEL' ? 60 : 40)) { gold -= selectedTower.upgrades.damage * (selectedTower.type === 'ACCEL' ? 60 : 40); selectedTower.baseDamage += (selectedTower.type === 'ACCEL' ? 5 : selectedTower.baseDamage * 0.4); selectedTower.upgrades.damage++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI(); } };
+window.upgradeRange = () => { if (selectedTower && gold >= selectedTower.upgrades.range * (selectedTower.type === 'ACCEL' ? 40 : 25)) { gold -= selectedTower.upgrades.range * (selectedTower.type === 'ACCEL' ? 40 : 25); selectedTower.baseRange += 20; selectedTower.upgrades.range++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI(); } };
+window.upgradeAccelDuration = () => { if (selectedTower && gold >= selectedTower.upgrades.duration * 50) { gold -= selectedTower.upgrades.duration * 50; selectedTower.baseDuration += 60; selectedTower.upgrades.duration++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI(); } };
+window.upgradeRadar = () => { if (selectedTower && selectedTower.type !== 'SNIPER' && selectedTower.upgrades.radar === 0 && gold >= 150) { gold -= 150; selectedTower.upgrades.radar = 1; selectedTower.level++; updateSelectionUI(); } };
+window.upgradeDefenseMelt = () => { if (selectedTower && gold >= (selectedTower.meltLevel + 1) * 50) { gold -= (selectedTower.meltLevel + 1) * 50; selectedTower.meltLevel++; selectedTower.level++; updateSelectionUI(); } };
+window.upgradeSlowPower = () => { if (selectedTower && gold >= (selectedTower.slowLevel + 1) * 40) { gold -= (selectedTower.slowLevel + 1) * 40; selectedTower.slowLevel++; selectedTower.level++; updateSelectionUI(); } };
+window.setBuffSpec = type => { if (selectedTower) { selectedTower.buffSpec = type; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI(); } };
+window.cycleTargeting = () => { if (selectedTower) { const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random']; selectedTower.targetMode = modes[(modes.indexOf(selectedTower.targetMode) + 1) % modes.length]; updateSelectionUI(); } };
+window.upgradeFarm = () => { if (selectedTower && selectedTower.isFarm && selectedTower.level < 5 && gold >= FARM_UPGRADE_COSTS[selectedTower.level]) { gold -= FARM_UPGRADE_COSTS[selectedTower.level]; selectedTower.level++; selectedTower.income = FARM_INCOME_LEVELS[selectedTower.level - 1]; updateSelectionUI(); } };
+window.removeTower = () => { if (!selectedTower) return; let spend = 0; if (selectedTower.isFarm) { for(let i=1; i<selectedTower.level; i++) spend += FARM_UPGRADE_COSTS[i]; } else { spend = (selectedTower.upgrades.speed - 1) * (selectedTower.type === 'ACCEL' ? 50 : 30) + (selectedTower.upgrades.damage - 1) * (selectedTower.type === 'ACCEL' ? 60 : 40) + (selectedTower.upgrades.range - 1) * (selectedTower.type === 'ACCEL' ? 40 : 25) + (selectedTower.upgrades.duration - 1) * 50 + selectedTower.upgrades.radar * 150 + selectedTower.meltLevel * 50 + selectedTower.slowLevel * 40; } gold += Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2); grid[selectedTower.gy][selectedTower.gx] = 0; towers = towers.filter(t => t !== selectedTower); recalculateAllPaths(); selectedTower = null; updateSelectionUI(); };
 
-window.startGame = (mapIndex) => {
-    currentMapIndex = mapIndex;
-    document.getElementById('mainMenu').style.display = 'none';
-    document.getElementById('game-root').style.display = 'flex';
-
-    const mapData = MAP_DATA[mapIndex];
-    COLS = mapData.cols; ROWS = mapData.rows;
-    canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE;
-    pCanvas.width = COLS * TILE_SIZE; pCanvas.height = ROWS * TILE_SIZE;
-
-    setupMap(mapData);
-    restartGame();
-};
-
-window.returnToMenu = () => {
-    document.getElementById('game-root').style.display = 'none';
-    document.getElementById('mainMenu').style.display = 'flex';
-    isPaused = true;
-};
-
-window.buyResearch = (type) => {
-  const costs = { bounty: 500, piercing: 600, interest: 750 };
-  if (gold >= costs[type]) {
-    gold -= costs[type];
-    if (type === 'bounty') research.bounty += 5;
-    if (type === 'piercing') research.piercing += 2;
-    if (type === 'interest') research.interest += 0.02;
-    const btn = document.getElementById('res_' + type);
-    if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; }
-  }
-};
-
-window.setBuildType = t => {
-  buildType = buildType === t ? null : t;
-  selectedTower = null; selectedEnemy = null;
-  document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-  if (buildType) {
-      const btn = document.getElementById('btn_' + buildType);
-      if (btn) btn.classList.add('active-build');
-  }
-  updateSelectionUI(); drawHoverPreview();
-};
-
-window.upgradeSpeed = () => {
-  const isAccel = selectedTower.type === 'ACCEL';
-  const cost = selectedTower.upgrades.speed * (isAccel ? 50 : 30);
-  if (selectedTower && gold >= cost) {
-    gold -= cost; selectedTower.baseReload *= (isAccel ? 0.8 : 0.85); 
-    selectedTower.upgrades.speed++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
-  }
-};
-
-window.upgradeDamage = () => {
-  const isAccel = selectedTower.type === 'ACCEL';
-  const cost = selectedTower.upgrades.damage * (isAccel ? 60 : 40);
-  if (selectedTower && gold >= cost) {
-    gold -= cost; selectedTower.baseDamage += (isAccel ? 5 : selectedTower.baseDamage * 0.4); 
-    selectedTower.upgrades.damage++; selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
-  }
-};
-
-window.upgradeRange = () => {
-  const isAccel = selectedTower.type === 'ACCEL';
-  const cost = selectedTower.upgrades.range * (isAccel ? 40 : 25);
-  if (selectedTower && gold >= cost) {
-    gold -= cost; selectedTower.baseRange += 20; selectedTower.upgrades.range++;
-    selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
-  }
-};
-
-window.upgradeAccelDuration = () => {
-  const cost = selectedTower.upgrades.duration * 50;
-  if (selectedTower && gold >= cost) {
-    gold -= cost; selectedTower.baseDuration += 60; selectedTower.upgrades.duration++;
-    selectedTower.level++; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI();
-  }
-};
-
-window.upgradeRadar = () => {
-  if (!selectedTower || selectedTower.type === 'SNIPER') return;
-  const cost = 150;
-  if (selectedTower.upgrades.radar === 0 && gold >= cost) {
-    gold -= cost; selectedTower.upgrades.radar = 1; selectedTower.level++; updateSelectionUI();
-  }
-};
-
-window.upgradeDefenseMelt = () => {
-  const cost = (selectedTower.meltLevel + 1) * 50;
-  if (selectedTower && gold >= cost) {
-    gold -= cost; selectedTower.meltLevel++; selectedTower.level++; updateSelectionUI();
-  }
-};
-
-window.upgradeSlowPower = () => {
-  const cost = (selectedTower.slowLevel + 1) * 40;
-  if (selectedTower && gold >= cost) {
-    gold -= cost; selectedTower.slowLevel++; selectedTower.level++; updateSelectionUI();
-  }
-};
-
-window.setBuffSpec = type => {
-  if (selectedTower) { selectedTower.buffSpec = type; towers.forEach(t => t.applyBuffs(towers)); updateSelectionUI(); }
-};
-
-window.cycleTargeting = () => {
-  if (!selectedTower) return;
-  const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random'];
-  selectedTower.targetMode = modes[(modes.indexOf(selectedTower.targetMode) + 1) % modes.length];
-  updateSelectionUI();
-};
-
-window.upgradeFarm = () => {
-    if (!selectedTower || !selectedTower.isFarm || selectedTower.level >= 5) return;
-    const cost = FARM_UPGRADE_COSTS[selectedTower.level];
-    if (gold >= cost) {
-        gold -= cost; selectedTower.level++; selectedTower.income = FARM_INCOME_LEVELS[selectedTower.level - 1]; updateSelectionUI();
-    }
-};
-
-window.removeTower = () => {
-  if (!selectedTower) return;
-  
-  let spend = 0;
-  if (selectedTower.isFarm) {
-      for(let i=1; i<selectedTower.level; i++) spend += FARM_UPGRADE_COSTS[i];
-  } else {
-      const isAccel = selectedTower.type === 'ACCEL';
-      spend = (selectedTower.upgrades.speed  - 1) * (isAccel ? 50 : 30) +
-              (selectedTower.upgrades.damage - 1) * (isAccel ? 60 : 40) +
-              (selectedTower.upgrades.range  - 1) * (isAccel ? 40 : 25) +
-              (selectedTower.upgrades.duration - 1) * 50 +
-              (selectedTower.upgrades.radar * 150) +
-              (selectedTower.meltLevel * 50) +
-              (selectedTower.slowLevel * 40);
-  }
-  
-  gold += Math.floor(TOWER_TYPES[selectedTower.type].cost / 2 + spend / 2);
-  grid[selectedTower.gy][selectedTower.gx] = 0;
-  towers = towers.filter(t => t !== selectedTower);
-  recalculateAllPaths(); selectedTower = null; updateSelectionUI();
-};
-
-window.togglePause = () => {
-  isPaused = !isPaused;
-  const btn = document.getElementById('pauseBtn');
-  if (btn) { btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; btn.style.background = isPaused ? '#FF9800' : ''; }
-};
-
-window.toggleSpeed = () => {
-  gameSpeed = gameSpeed === 1 ? 2 : 1;
-  const btn = document.getElementById('speedBtn');
-  if (btn) { btn.innerText = gameSpeed === 2 ? '2×' : '1×'; btn.classList.toggle('fast', gameSpeed === 2); }
-};
-
-window.toggleMute = () => {
-  const muteBtn = document.getElementById('muteBtn');
-  if (isMusicPlaying) {
-    bgMusic.pause(); isMusicPlaying = false;
-    if (muteBtn) { muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; }
-  } else {
-    bgMusic.play().catch(err => { console.error("Browser blocked audio:", err); });
-    isMusicPlaying = true;
-    if (muteBtn) { muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; }
-  }
-};
+window.togglePause = () => { isPaused = !isPaused; const btn = document.getElementById('pauseBtn'); if (btn) { btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; btn.style.background = isPaused ? '#FF9800' : ''; } };
+window.toggleSpeed = () => { gameSpeed = gameSpeed === 1 ? 2 : 1; const btn = document.getElementById('speedBtn'); if (btn) { btn.innerText = gameSpeed === 2 ? '2×' : '1×'; btn.classList.toggle('fast', gameSpeed === 2); } };
+window.toggleMute = () => { const muteBtn = document.getElementById('muteBtn'); if (isMusicPlaying) { bgMusic.pause(); isMusicPlaying = false; if (muteBtn) { muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; } } else { bgMusic.play().catch(err => { console.error("Browser blocked audio:", err); }); isMusicPlaying = true; if (muteBtn) { muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; } } };
 
 window.restartGame = () => {
-  gold = 250; lives = 20; waveNumber = 0; 
-  enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0;
-  enemies = []; towers = []; projectiles = []; particles = [];
-  selectedTower = null; selectedEnemy = null; buildType = null;
-  isPaused = false; isWaveActive = false; gameSpeed = 1; frameCount = 0;
-  research = { bounty: 0, piercing: 0, interest: 0.01 }; 
-
-  const pauseBtn = document.getElementById('pauseBtn');
-  if (pauseBtn) { pauseBtn.innerText = 'PAUSE'; pauseBtn.style.background = ''; }
-  const speedBtn = document.getElementById('speedBtn');
-  if (speedBtn) { speedBtn.innerText = '1×'; speedBtn.classList.remove('fast'); }
-  const intDisp = document.getElementById('interestDisplay');
-  if (intDisp) intDisp.innerText = '';
-  
+  gold = 250; lives = 20; waveNumber = 0; enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0; enemies = []; towers = []; projectiles = []; particles = []; selectedTower = null; selectedEnemy = null; buildType = null; isPaused = false; isWaveActive = false; gameSpeed = 1; frameCount = 0; research = { bounty: 0, piercing: 0, interest: 0.01 };
+  const pauseBtn = document.getElementById('pauseBtn'); if (pauseBtn) { pauseBtn.innerText = 'PAUSE'; pauseBtn.style.background = ''; }
+  const speedBtn = document.getElementById('speedBtn'); if (speedBtn) { speedBtn.innerText = '1×'; speedBtn.classList.remove('fast'); }
+  const intDisp = document.getElementById('interestDisplay'); if (intDisp) intDisp.innerText = '';
   grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-  if (MAP_DATA[currentMapIndex].type === "FIXED") {
-      const layout = MAP_DATA[currentMapIndex].layout;
-      for(let y=0; y<ROWS; y++) {
-          for(let x=0; x<COLS; x++) {
-              if (layout[y][x] !== '0') grid[y][x] = 1;
-          }
-      }
-  }
-
+  if (MAP_DATA[currentMapIndex].type === "FIXED") { const layout = MAP_DATA[currentMapIndex].layout; for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++) if (layout[y] && layout[y][x] && layout[y][x] !== '0') grid[y][x] = 1; }
   updateSelectionUI(); updateWavePreview();
 };
 
-// ── Mouse input ────────────────────────────────
-
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-
 canvas.addEventListener('mousedown', e => {
-  const rect   = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
-  const gx     = Math.floor(clickX / TILE_SIZE);
-  const gy     = Math.floor(clickY / TILE_SIZE);
-
-  if (e.button === 2) {
-    buildType = null; selectedTower = null; selectedEnemy = null;
-    document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-    updateSelectionUI(); drawHoverPreview(); return;
-  }
-
+  const rect = canvas.getBoundingClientRect(), clickX = e.clientX - rect.left, clickY = e.clientY - rect.top, gx = Math.floor(clickX / TILE_SIZE), gy = Math.floor(clickY / TILE_SIZE);
+  if (e.button === 2) { buildType = null; selectedTower = null; selectedEnemy = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); updateSelectionUI(); drawHoverPreview(); return; }
   let clickedEnemy = null;
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const hitR = enemies[i].type === 'BOSS' ? 30 : 22;
-    if (Math.hypot(enemies[i].x - clickX, enemies[i].y - clickY) <= hitR) { clickedEnemy = enemies[i]; break; }
-  }
-  if (clickedEnemy) {
-    selectedEnemy = clickedEnemy; selectedTower = null; buildType = null;
-    document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-    updateSelectionUI(); return;
-  }
-
+  for (let i = enemies.length - 1; i >= 0; i--) if (Math.hypot(enemies[i].x - clickX, enemies[i].y - clickY) <= (enemies[i].type === 'BOSS' ? 30 : 22)) { clickedEnemy = enemies[i]; break; }
+  if (clickedEnemy) { selectedEnemy = clickedEnemy; selectedTower = null; buildType = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); updateSelectionUI(); return; }
   const existingTower = towers.find(t => t.gx === gx && t.gy === gy);
-  if (existingTower) {
-    selectedTower = existingTower; selectedEnemy = null; buildType = null;
-    document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-    updateSelectionUI(); return;
-  }
-
+  if (existingTower) { selectedTower = existingTower; selectedEnemy = null; buildType = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); updateSelectionUI(); return; }
   if (buildType) {
-    if (buildType === 'FARM' && towers.filter(t => t.isFarm).length >= 8) {
-        alert("Maximum of 8 Farms allowed!"); buildType = null;
-        document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build'));
-        updateSelectionUI(); drawHoverPreview(); return;
-    }
-
+    if (buildType === 'FARM' && towers.filter(t => t.isFarm).length >= 8) { alert("Maximum of 8 Farms allowed!"); buildType = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); updateSelectionUI(); drawHoverPreview(); return; }
     const cost = TOWER_TYPES[buildType].cost;
     if (gold >= cost && grid[gy] && grid[gy][gx] === 0) {
       if ((gx === startPos.x && gy === startPos.y) || (gx === endPos.x && gy === endPos.y)) return;
-      grid[gy][gx] = 1;
-      const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
-      if (p || TOWER_TYPES[buildType].isFarm) {
-        gold -= cost; towers.push(new Tower(gx, gy, buildType)); recalculateAllPaths();
-      } else { grid[gy][gx] = 0; }
+      grid[gy][gx] = 1; const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
+      if (p || TOWER_TYPES[buildType].isFarm) { gold -= cost; towers.push(new Tower(gx, gy, buildType)); recalculateAllPaths(); } else grid[gy][gx] = 0;
       drawHoverPreview();
     }
-  } else {
-    selectedTower = null; selectedEnemy = null; updateSelectionUI();
-  }
+  } else { selectedTower = null; selectedEnemy = null; updateSelectionUI(); }
 });
-
-// ── Core tick ──────────────────────────────────
 
 function tick() {
   if (lives <= 0 || isPaused) return;
   frameCount++;
-
   if (enemies.length === 0 && enemiesLeftToSpawn === 0) {
     if (isWaveActive) {
-      const bonus    = 50 + waveNumber * 10;
-      const interest = Math.floor(gold * research.interest);
-      
-      let farmGen = 0;
-      towers.forEach(t => {
-          if (t.isFarm) { farmGen += t.income; t.totalGenerated += t.income; }
-      });
-      
-      gold += bonus + interest + farmGen;
-      
-      let dispText = `+ $${interest} int`;
-      if (farmGen > 0) dispText += ` | + $${farmGen} farms`;
-      const intDisp = document.getElementById('interestDisplay');
-      if (intDisp) intDisp.innerText = dispText;
-      
+      let farmGen = 0; towers.forEach(t => { if (t.isFarm) { farmGen += t.income; t.totalGenerated += t.income; } });
+      const interest = Math.floor(gold * research.interest); gold += 50 + waveNumber * 10 + interest + farmGen;
+      let dispText = `+ $${interest} int`; if (farmGen > 0) dispText += ` | + $${farmGen} farms`;
+      const intDisp = document.getElementById('interestDisplay'); if (intDisp) intDisp.innerText = dispText;
       if (selectedTower && selectedTower.isFarm) updateSelectionUI();
-      
       isWaveActive = false; waveCooldown = 180; updateWavePreview();
     } else {
-      if (waveCooldown > 0) {
-        waveCooldown--;
-      } else {
-        waveNumber++;
-        enemiesLeftToSpawn = waveNumber % 10 === 0 ? 1 : 5 + waveNumber;
-        spawnTimer = 999; isWaveActive = true;
-        const intDisp = document.getElementById('interestDisplay');
-        if (intDisp) intDisp.innerText = ''; 
-        updateWavePreview();
-      }
+      if (waveCooldown > 0) waveCooldown--;
+      else { waveNumber++; enemiesLeftToSpawn = waveNumber % 10 === 0 ? 1 : 5 + waveNumber; spawnTimer = 999; isWaveActive = true; const intDisp = document.getElementById('interestDisplay'); if (intDisp) intDisp.innerText = ''; updateWavePreview(); }
     }
   }
-
-  const spawnInterval = Math.max(20, 60 - waveNumber * 2);
-  if (enemiesLeftToSpawn > 0) spawnTimer++;
-  if (enemiesLeftToSpawn > 0 && spawnTimer >= spawnInterval) {
-    spawnTimer = 0;
-    
-    let type = 'NORMAL';
+  if (enemiesLeftToSpawn > 0 && ++spawnTimer >= Math.max(20, 60 - waveNumber * 2)) {
+    spawnTimer = 0; let type = 'NORMAL';
     if (waveNumber % 10 === 0 && waveNumber > 0) type = 'BOSS';
-    else if (waveNumber > 1) {
-      const r = Math.random();
-      if (waveNumber > 12 && r > 0.90) type = 'CARRIER';
-      else if (waveNumber > 9 && r > 0.80) type = 'HEALER';
-      else if (waveNumber > 7 && r > 0.65) type = 'GHOST';
-      else if (waveNumber > 4 && r > 0.50) type = 'FLYER';
-      else if (waveNumber > 3 && r > 0.40) type = 'TANK';
-      else if (waveNumber > 1 && r > 0.30) type = 'RUNNER';
-    }
-    
+    else if (waveNumber > 1) { const r = Math.random(); if (waveNumber > 12 && r > 0.9) type = 'CARRIER'; else if (waveNumber > 9 && r > 0.8) type = 'HEALER'; else if (waveNumber > 7 && r > 0.65) type = 'GHOST'; else if (waveNumber > 4 && r > 0.5) type = 'FLYER'; else if (waveNumber > 3 && r > 0.4) type = 'TANK'; else if (waveNumber > 1 && r > 0.3) type = 'RUNNER'; }
     const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
-    if (p || type === 'FLYER') enemies.push(new Enemy(p || [], type)); 
-    enemiesLeftToSpawn--;
+    if (p || type === 'FLYER') enemies.push(new Enemy(p || [], type)); enemiesLeftToSpawn--;
   }
-
-  towers.forEach(t => t.applyBuffs(towers));
-  towers.forEach(t => t.update());
-
-  enemies = enemies.filter(e => {
-    e.update();
-    if (!e.alive && selectedEnemy === e) { selectedEnemy = null; updateSelectionUI(); }
-    return e.alive;
-  });
-
-  projectiles = projectiles.filter(p => { p.update(); return p.alive; });
-  particles = particles.filter(p => { p.update(); return p.life > 0; });
-
+  towers.forEach(t => t.applyBuffs(towers)); towers.forEach(t => t.update());
+  enemies = enemies.filter(e => { e.update(); if (!e.alive && selectedEnemy === e) { selectedEnemy = null; updateSelectionUI(); } return e.alive; });
+  projectiles = projectiles.filter(p => { p.update(); return p.alive; }); particles = particles.filter(p => { p.update(); return p.life > 0; });
   if (selectedEnemy) updateSelectionUI();
 }
 
-// ── Game Loop ─────────────────────────────
 function update() {
     requestAnimationFrame(update);
-
     for (let i = 0; i < gameSpeed; i++) tick();
-
-    const goldDisp = document.getElementById('goldDisplay');
-    if (goldDisp) goldDisp.innerText = gold;
-    
-    const livesDisp = document.getElementById('livesDisplay');
-    if (livesDisp) livesDisp.innerText = lives;
-    
-    const waveDisp = document.getElementById('waveDisplay');
-    if (waveDisp) waveDisp.innerText = waveNumber;
+    const goldDisp = document.getElementById('goldDisplay'); if (goldDisp) goldDisp.innerText = gold;
+    const livesDisp = document.getElementById('livesDisplay'); if (livesDisp) livesDisp.innerText = lives;
+    const waveDisp = document.getElementById('waveDisplay'); if (waveDisp) waveDisp.innerText = waveNumber;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw Base Grid
-    ctx.strokeStyle = '#333';
-    for(let x=0; x<COLS; x++) for(let y=0; y<ROWS; y++) ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    
-    // Draw Fixed Path for maps 2-5
+    ctx.strokeStyle = '#333'; for(let x=0; x<COLS; x++) for(let y=0; y<ROWS; y++) ctx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     if (MAP_DATA[currentMapIndex] && MAP_DATA[currentMapIndex].type === "FIXED") {
-      ctx.fillStyle = '#2c2c2c'; 
-      const layout = MAP_DATA[currentMapIndex].layout;
-      for(let y=0; y<ROWS; y++) {
-          for(let x=0; x<COLS; x++) {
-              if (layout[y] && layout[y][x] && layout[y][x] !== '0') {
-                  ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-              }
-          }
-      }
+      ctx.fillStyle = '#2c2c2c'; const layout = MAP_DATA[currentMapIndex].layout;
+      for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++) if (layout[y] && layout[y][x] && (layout[y][x] === '1' || layout[y][x] === 'E' || layout[y][x] === 'S')) ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
     
     ctx.fillStyle = '#2196F3'; ctx.fillRect(startPos.x*TILE_SIZE, startPos.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     ctx.fillStyle = '#F44336'; ctx.fillRect(endPos.x*TILE_SIZE, endPos.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
     ctx.fillText('IN',  startPos.x * TILE_SIZE + TILE_SIZE / 2, startPos.y * TILE_SIZE + TILE_SIZE / 2 + 4);
-    ctx.fillText('OUT', endPos.x   * TILE_SIZE + TILE_SIZE / 2, endPos.y   * TILE_SIZE + TILE_SIZE / 2 + 4);
-    ctx.textAlign = 'left';
+    ctx.fillText('OUT', endPos.x   * TILE_SIZE + TILE_SIZE / 2, endPos.y   * TILE_SIZE + TILE_SIZE / 2 + 4); ctx.textAlign = 'left';
 
-    towers.forEach(t => t.draw());
-    enemies.forEach(e => e.draw());
-    projectiles.forEach(p => p.draw());
-    particles.forEach(p => p.draw()); 
+    towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw()); particles.forEach(p => p.draw()); 
 
-    if (isPaused) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white'; ctx.font = 'bold 48px Arial'; ctx.textAlign = 'center';
-        ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2); ctx.textAlign = 'left';
-    }
-
-    if (lives <= 0) {
-        ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = 'red'; ctx.font = 'bold 50px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2); ctx.textAlign = 'left';
-    }
+    if (isPaused) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'white'; ctx.font = 'bold 48px Arial'; ctx.textAlign = 'center'; ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2); ctx.textAlign = 'left'; }
+    if (lives <= 0) { ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = 'red'; ctx.font = 'bold 50px Arial'; ctx.textAlign = 'center'; ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2); ctx.textAlign = 'left'; }
 }
-
-// Start Main Loop (waits at menu)
 update();

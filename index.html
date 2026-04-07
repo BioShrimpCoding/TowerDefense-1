@@ -34,6 +34,7 @@
         <button class="sys-btn" onclick="returnToMenu()">MAPS</button>
       </div>
     </div>
+    
     <div class="shop-group">
       <button id="btn_PISTOL" onclick="setBuildType('PISTOL')">Pistol<br>$50</button>
       <button id="btn_SNIPER" onclick="setBuildType('SNIPER')">Sniper<br>$150</button>
@@ -45,41 +46,6 @@
       <button id="btn_BUFF" onclick="setBuildType('BUFF')">Buff<br>$150</button>
       <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;">Railgun<br>$800</button>
       <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn">Farm<br>$250</button>
-    </div>
-    
-    <div id="upgradeMenu">
-      <button id="targetBtn" onclick="cycleTargeting()" style="width: 70px;">First</button>
-      
-      <div id="standardUpgrades" style="display:flex;gap:4px;">
-        <button id="btnUpgradeSpeed" onclick="upgradeSpeed()">Speed</button>
-        <button id="btnUpgradeDamage" onclick="upgradeDamage()">Power</button>
-        <button id="btnUpgradeRange" onclick="upgradeRange()">Range</button>
-        <button id="btnUpgradeRadar" class="radar-btn" onclick="upgradeRadar()">Radar $150</button>
-      </div>
-      
-      <div id="accelUpgrades" style="display:none;gap:4px;">
-        <button id="btnUpgradeDuration" class="accel-choice" onclick="upgradeAccelDuration()">Duration</button>
-      </div>
-      
-      <div id="buffSpecialization" style="display:none;gap:4px;">
-        <button class="buff-choice" onclick="setBuffSpec('SPEED')">Speed</button>
-        <button class="buff-choice" onclick="setBuffSpec('DAMAGE')">Dmg</button>
-        <button class="buff-choice" onclick="setBuffSpec('RANGE')">Range</button>
-      </div>
-      
-      <div id="flameUpgrades" style="display:none;gap:4px;">
-        <button id="btnUpgradeMelt" class="flame-choice" onclick="upgradeDefenseMelt()">Def Melt</button>
-      </div>
-      
-      <div id="iceUpgrades" style="display:none;gap:4px;">
-        <button id="btnUpgradeSlow" class="ice-btn" onclick="upgradeSlowPower()">Slow Pwr</button>
-      </div>
-
-      <div id="farmUpgrades" style="display:none;gap:4px;">
-        <button id="btnUpgradeFarm" class="farm-btn" onclick="upgradeFarm()">Yield</button>
-      </div>
-
-      <button class="remove-btn" onclick="removeTower()">SELL</button>
     </div>
   </div>
 
