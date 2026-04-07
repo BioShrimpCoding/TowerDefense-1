@@ -114,7 +114,7 @@ const WAVE_COLORS = {
 
 // ── Game state ─────────────────────────────────
 
-let gold = 200, lives = 20, waveNumber = 0, buildType = null;
+let gold = 250, lives = 20, waveNumber = 0, buildType = null;
 let selectedTower = null, selectedEnemy = null;
 let enemiesLeftToSpawn = 0, spawnTimer = 0, waveCooldown = 0;
 let isPaused = false, isWaveActive = false, gameSpeed = 1;
