@@ -5,48 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Desktop Defender</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* OPTIMIZATION: Extracted inline styles for a cleaner DOM and better performance */
+    .text-primary { color: #2196F3; }
+    .text-warning { color: #ffd700; }
+    .text-danger { color: #ff4444; }
+    .text-muted { color: #aaa; }
+    
+    #mainMenu { text-align: center; max-width: 400px; margin: 0 auto; padding-top: 50px; }
+    #mainMenu h1 { font-size: 42px; margin-bottom: 10px; }
+    #mainMenu h3 { margin-bottom: 10px; }
+    
+    .menu-btn-group { display: flex; flex-direction: column; gap: 12px; }
+    .btn-success { background: #4CAF50 !important; margin-bottom: 10px; }
+    .btn-info { background: #2196F3 !important; }
+    
+    #metaTechUI { margin-top: 25px; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; text-align: left; }
+    #metaTechUI h3 { margin-top: 0; margin-bottom: 5px; text-align: center; }
+    .meta-tokens-text { font-size: 13px; margin-bottom: 10px; text-align: center; }
+    .meta-tokens-count { color: #fff; font-weight: bold; font-size: 16px; }
+    .meta-tokens-sub { font-size: 10px; }
+    .meta-btn-group { display: flex; flex-direction: column; gap: 6px; }
+    
+    .sys-bar { display: flex; gap: 4px; margin-left: 8px; align-items: center; }
+    .auto-start-label { font-size: 12px; margin-left: 10px; cursor: pointer; }
+    
+    #interestDisplay { font-size: 11px; text-align: center; margin-top: 5px; }
+    #researchMenu h4 { margin-bottom: 5px; }
+    
+    .modal-content h2 { margin-bottom: 15px; text-align: center; }
+    .save-slots-container { display: flex; flex-direction: column; gap: 10px; }
+    .close-modal-btn { width: 100%; margin-top: 15px; padding: 10px; }
+
+    /* Unified Tooltip Container */
+    #shared-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(15, 15, 20, 0.95);
+      color: #fff;
+      padding: 12px;
+      border: 1px solid #ffd700;
+      border-radius: 6px;
+      font-size: 14px;
+      z-index: 1000;
+      display: none;
+      max-width: 220px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.6);
+      line-height: 1.4;
+    }
+  </style>
 </head>
 <body>
 
 <div id="mainMenu">
-  <h1 style="color:#2196F3; font-size:42px; margin-bottom: 10px;">DESKTOP DEFENDER</h1>
-  <h3 style="color:#aaa; margin-bottom: 30px;">Select a Mission Location</h3>
-  <div style="display:flex; flex-direction:column; gap:12px;">
+  <h1 class="text-primary">DESKTOP DEFENDER</h1>
+  <h3 class="text-muted">Select a Mission Location</h3>
+  
+  <div class="menu-btn-group">
+    <button class="sys-btn menu-btn btn-success" onclick="openSaveModal('menu')">💾 LOAD / SAVE GAME</button>
     <button class="sys-btn menu-btn" onclick="startGame(0)">Map 1: Sandbox (Random Path)</button>
     <button class="sys-btn menu-btn" onclick="startGame(1)">Map 2: The S-Curve (Set Path)</button>
     <button class="sys-btn menu-btn" onclick="startGame(2)">Map 3: The Spiral (Set Path)</button>
     <button class="sys-btn menu-btn" onclick="startGame(3)">Map 4: River Run (Set Path)</button>
     <button class="sys-btn menu-btn" onclick="startGame(4)">Map 5: The Maze (Set Path)</button>
   </div>
+  
+  <div id="metaTechUI">
+      <h3 class="text-warning">GLOBAL TECH TREE</h3>
+      <p class="text-muted meta-tokens-text">Tokens: <span id="metaTokens" class="meta-tokens-count">0</span> <span class="meta-tokens-sub">(Earned on Game Over)</span></p>
+      <div class="meta-btn-group">
+          <button class="meta-btn" onclick="buyMeta('discount')" data-desc="Permanently reduces the cost of all towers by 5% per level.">[-5% Tower Cost] Lvl <span id="meta_discount_lvl">0</span>/10 (Cost: <span id="meta_discount_cost">5</span>)</button>
+          <button class="meta-btn" onclick="buyMeta('lives')" data-desc="Start every game with 5 extra lives per level.">[+5 Start Lives] Lvl <span id="meta_lives_lvl">0</span>/10 (Cost: <span id="meta_lives_cost">5</span>)</button>
+          <button class="meta-btn" onclick="buyMeta('farmInc')" data-desc="Increases the payout of Farm towers by 10% per level.">[+10% Farm Inc.] Lvl <span id="meta_farmInc_lvl">0</span>/10 (Cost: <span id="meta_farmInc_cost">5</span>)</button>
+      </div>
+  </div>
 </div>
 
 <div id="game-root" style="display:none;">
   <div id="ui">
     <div class="stats-group">
-      <div class="fixed-stat-box" style="color:#ffd700;">$<br><span id="goldDisplay">250</span></div>
-      <div class="fixed-stat-box" style="color:#ff4444;">❤<br><span id="livesDisplay">20</span></div>
+      <div class="fixed-stat-box text-warning">$<br><span id="goldDisplay">250</span></div>
+      <div class="fixed-stat-box text-danger">❤<br><span id="livesDisplay">20</span></div>
       <div class="fixed-stat-box">WAVE<br><span id="waveDisplay">0</span></div>
-      <div style="display:flex; gap:4px; margin-left:8px; width: auto;">
+      
+      <div class="sys-bar">
         <button id="pauseBtn" class="sys-btn" onclick="togglePause()">PAUSE</button>
         <button id="speedBtn" class="sys-btn" onclick="toggleSpeed()">1×</button>
         <button id="muteBtn" class="sys-btn" onclick="toggleMute()">🎵 PLAY MUSIC</button>
         <button class="sys-btn remove-btn" onclick="restartGame()">RESTART</button>
+        <button class="sys-btn btn-info" onclick="openSaveModal('ingame')">💾 SAVES</button>
         <button class="sys-btn" onclick="returnToMenu()">MAPS</button>
+        <label class="auto-start-label"><input type="checkbox" id="autoStartCheck" onchange="toggleAutoStart(this.checked)"> Auto-Start</label>
       </div>
     </div>
     
     <div class="shop-group">
-      <button id="btn_PISTOL" onclick="setBuildType('PISTOL')">Pistol<br>$50</button>
-      <button id="btn_SNIPER" onclick="setBuildType('SNIPER')">Sniper<br>$150</button>
-      <button id="btn_MINIGUN" onclick="setBuildType('MINIGUN')">Gatling<br>$300</button>
-      <button id="btn_FLAME" onclick="setBuildType('FLAME')">Flame<br>$175</button>
-      <button id="btn_ICE" onclick="setBuildType('ICE')" class="ice-btn">Ice<br>$125</button>
-      <button id="btn_BOMB" onclick="setBuildType('BOMB')">Artillery<br>$200</button>
-      <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn">Accel<br>$500</button>
-      <button id="btn_BUFF" onclick="setBuildType('BUFF')">Buff<br>$150</button>
-      <button id="btn_ENGIE" onclick="setBuildType('ENGIE')" style="border-color:#FFC107;">Engie<br>$400</button>
-      <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;">Railgun<br>$800</button>
-      <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn">Farm<br>$250</button>
+      <button id="btn_PISTOL" onclick="setBuildType('PISTOL')" data-hotkey="1" data-desc="[1] Pistol: Fast firing, low damage. Good for shields.">Pistol<br><span class="cost-disp" data-type="PISTOL"></span></button>
+      <button id="btn_SNIPER" onclick="setBuildType('SNIPER')" data-hotkey="2" data-desc="[2] Sniper: Slow fire rate, massive damage. Ideal for Bosses.">Sniper<br><span class="cost-disp" data-type="SNIPER"></span></button>
+      <button id="btn_MINIGUN" onclick="setBuildType('MINIGUN')" data-hotkey="3" data-desc="[3] Gatling: Extreme fire rate. Melts standard enemies.">Gatling<br><span class="cost-disp" data-type="MINIGUN"></span></button>
+      <button id="btn_FLAME" onclick="setBuildType('FLAME')" data-hotkey="4" data-desc="[4] Flame: Deals area-of-effect burn damage over time.">Flame<br><span class="cost-disp" data-type="FLAME"></span></button>
+      <button id="btn_ICE" onclick="setBuildType('ICE')" class="ice-btn" data-hotkey="5" data-desc="[5] Ice: Slows enemies in a radius. Deals no damage.">Ice<br><span class="cost-disp" data-type="ICE"></span></button>
+      <button id="btn_BOMB" onclick="setBuildType('BOMB')" data-hotkey="6" data-desc="[6] Artillery: Lobs heavy explosives for splash damage.">Artillery<br><span class="cost-disp" data-type="BOMB"></span></button>
+      <button id="btn_TRAPPER" onclick="setBuildType('TRAPPER')" class="trap-btn" data-hotkey="7" data-desc="[7] Trapper: Drops spikes on the track to damage passing enemies.">Trapper<br><span class="cost-disp" data-type="TRAPPER"></span></button>
+      <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn" data-hotkey="8" data-desc="[8] Accel: Speeds up the fire rate of nearby towers.">Accel<br><span class="cost-disp" data-type="ACCEL"></span></button>
+      <button id="btn_BUFF" onclick="setBuildType('BUFF')" data-hotkey="9" data-desc="[9] Buff: Increases the damage of nearby towers.">Buff<br><span class="cost-disp" data-type="BUFF"></span></button>
+      <button id="btn_ENGIE" onclick="setBuildType('ENGIE')" style="border-color:#FFC107;" data-hotkey="0" data-desc="[0] Engie: Deploys mini-drones to assist in attacking.">Engie<br><span class="cost-disp" data-type="ENGIE"></span></button>
+      <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;" data-hotkey="-" data-desc="[-] Railgun: Infinite range piercing beam. Needs a spotter.">Railgun<br><span class="cost-disp" data-type="RAILGUN"></span></button>
+      <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn" data-hotkey="=" data-desc="[=] Farm: Generates extra gold at the end of every wave.">Farm<br><span class="cost-disp" data-type="FARM"></span></button>
     </div>
   </div>
 
@@ -57,13 +122,15 @@
     </div>
     <div id="sideMenu">
       <div id="statsContent"></div>
-      <div id="interestDisplay" style="color:#aaa; font-size:11px; text-align:center; margin-top:5px;"></div>
+      <div id="interestDisplay" class="text-muted"></div>
+      
       <div id="researchMenu">
-        <h4 style="color:#ffd700; margin-bottom:5px;">RESEARCH</h4>
-        <button onclick="buyResearch('bounty')" id="res_bounty">Bounty Hunter $500</button>
-        <button onclick="buyResearch('piercing')" id="res_piercing">Alloy Rounds $600</button>
-        <button onclick="buyResearch('interest')" id="res_interest">Bank Interest $750</button>
+        <h4 class="text-warning">RESEARCH</h4>
+        <button onclick="buyResearch('bounty')" id="res_bounty" data-desc="Increase gold dropped by defeated enemies.">Bounty Hunter $500</button>
+        <button onclick="buyResearch('piercing')" id="res_piercing" data-desc="Projectiles pass through multiple enemies.">Alloy Rounds $600</button>
+        <button onclick="buyResearch('interest')" id="res_interest" data-desc="Earn a percentage of your banked gold each wave.">Bank Interest $750</button>
       </div>
+      
       <div id="wavePreview">
         <h4>NEXT WAVE</h4>
         <div id="waveComposition"></div>
@@ -71,6 +138,16 @@
     </div>
   </div>
 </div>
+
+<div id="saveModal" style="display:none;">
+  <div class="modal-content">
+    <h2 class="text-primary">SAVE SLOTS</h2>
+    <div id="saveSlotsContainer" class="save-slots-container"></div>
+    <button class="sys-btn close-modal-btn" onclick="closeSaveModal()">CLOSE</button>
+  </div>
+</div>
+
+<div id="shared-tooltip"></div>
 
 <script src="game.js"></script>
 </body>

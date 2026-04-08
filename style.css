@@ -1,56 +1,290 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* =========================================
+   1. VARIABLES & RESET
+   ========================================= */
+:root {
+  --bg-dark: #111;
+  --bg-main: #222;
+  --bg-panel: #333;
+  --border-light: #666;
+  --border-mid: #555;
+  --border-dark: #444;
+  --text-main: white;
+  --text-muted: #aaa;
+  --color-success: #4CAF50;
+}
+
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
 body {
-  background: #222; display: flex; flex-direction: column; align-items: center;
+  background: var(--bg-main); 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: white; padding: 10px; overflow-x: hidden;
+  color: var(--text-main); 
+  padding: 10px; 
+  overflow-x: hidden;
 }
 
+/* =========================================
+   2. MAIN LAYOUT & CONTAINERS
+   ========================================= */
 #mainMenu {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 100;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: absolute; 
+  top: 0; left: 0; 
+  width: 100%; height: 100%; 
+  background: var(--bg-dark); 
+  z-index: 100;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center;
 }
-.menu-btn { width: 280px !important; height: 45px !important; font-size: 14px !important; }
 
-#game-root { display: flex; flex-direction: column; align-items: center; width: 100%; }
-#gameArea { display: flex; gap: 10px; align-items: flex-start; justify-content: center; width: 100%; }
-#canvasWrapper { position: relative; flex-shrink: 0; display: inline-block; }
+#game-root { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  width: 100%; 
+}
+
+#gameArea { 
+  display: flex; 
+  gap: 10px; 
+  align-items: flex-start; 
+  justify-content: center; 
+  width: 100%; 
+}
+
+#canvasWrapper { 
+  position: relative; 
+  flex-shrink: 0; 
+  display: inline-block; 
+}
 
 #ui {
-  display: flex; align-items: center; gap: 8px; background: #333; padding: 8px 12px;
-  border-radius: 10px; margin-bottom: 8px; border: 1px solid #555;
-  width: 100%; max-width: 1100px; flex-wrap: wrap; justify-content: center;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  gap: 8px; 
+  background: var(--bg-panel); 
+  padding: 8px 12px;
+  border-radius: 10px; 
+  margin-bottom: 8px; 
+  border: 1px solid var(--border-mid);
+  width: 100%; 
+  max-width: 1200px; 
+  flex-wrap: wrap; 
 }
 
-.stats-group { display: flex; gap: 8px; font-weight: bold; font-size: 12px; align-items: center; }
-.fixed-stat-box { width: 80px; min-width: 80px; max-width: 80px; text-align: center; white-space: nowrap; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+#sideMenu { 
+  width: 215px; 
+  background: var(--bg-panel); 
+  border: 1px solid var(--border-mid); 
+  border-radius: 8px; 
+  padding: 10px; 
+  font-size: 12px; 
+}
 
-.shop-group { display: flex; gap: 4px; border-left: 2px solid #444; padding-left: 10px; }
-.shop-group button { width: 70px; height: 40px; font-size: 10px; padding: 2px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+/* =========================================
+   3. CANVAS & PREVIEWS
+   ========================================= */
+canvas { 
+  border: 3px solid var(--border-dark); 
+  border-radius: 4px; 
+  background: #1a1a1a; 
+  cursor: crosshair; 
+}
 
-canvas { border: 3px solid #444; border-radius: 4px; background: #1a1a1a; cursor: crosshair; }
-#pathPreviewCanvas { position: absolute; top: 0; left: 0; pointer-events: none; background: transparent; border: none; }
+#pathPreviewCanvas { 
+  position: absolute; 
+  top: 0; left: 0; 
+  pointer-events: none; 
+  background: transparent; 
+  border: none; 
+}
 
-#sideMenu { width: 215px; background: #333; border: 1px solid #555; border-radius: 8px; padding: 10px; font-size: 12px; }
-.stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding: 5px 0; font-size: 12px; }
-.stat-row span:last-child { font-weight: bold; color: #4CAF50; }
-#wavePreview { margin-top: 10px; padding-top: 8px; border-top: 1px solid #555; }
-#wavePreview h4 { margin: 0 0 6px; font-size: 12px; color: #aaa; }
-.wave-pill { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; margin: 2px; font-weight: bold; }
+/* =========================================
+   4. STATS & SHOP COMPONENTS
+   ========================================= */
+.stats-group { 
+  display: flex; 
+  gap: 8px; 
+  font-weight: bold; 
+  font-size: 12px; 
+  align-items: center; 
+}
 
-button { cursor: pointer; background: #444; color: white; border: 1px solid #666; border-radius: 4px; transition: background 0.15s ease; padding: 5px; }
-button:hover { background: #555; }
+.fixed-stat-box { 
+  width: 80px; min-width: 80px; max-width: 80px; 
+  text-align: center; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: center; 
+}
+
+.stat-row { 
+  display: flex; 
+  justify-content: space-between; 
+  border-bottom: 1px solid var(--border-dark); 
+  padding: 5px 0; 
+  font-size: 12px; 
+}
+
+.stat-row span:last-child { 
+  font-weight: bold; 
+  color: var(--color-success); 
+}
+
+.shop-group { 
+  display: flex; gap: 4px; 
+  border-left: 2px solid var(--border-dark); 
+  padding-left: 10px; 
+}
+
+.shop-group button { 
+  width: 70px; height: 40px; 
+  font-size: 10px; padding: 2px; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: center; 
+  align-items: center; 
+}
+
+#wavePreview { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-mid); }
+#wavePreview h4 { margin: 0 0 6px; font-size: 12px; color: var(--text-muted); }
+
+.wave-pill { 
+  display: inline-block; 
+  padding: 2px 7px; 
+  border-radius: 10px; 
+  font-size: 11px; 
+  margin: 2px; 
+  font-weight: bold; 
+}
+
+/* =========================================
+   5. BUTTONS & STATES
+   ========================================= */
+button { 
+  cursor: pointer; 
+  background: var(--border-dark); 
+  color: var(--text-main); 
+  border: 1px solid var(--border-light); 
+  border-radius: 4px; 
+  transition: background 0.15s ease; 
+  padding: 5px; 
+}
+
+button:hover { background: var(--border-mid); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+.menu-btn { width: 280px !important; height: 45px !important; font-size: 14px !important; }
 .sys-btn { background: #1976D2 !important; border: none !important; font-weight: bold; }
+.meta-btn { background: #424242 !important; border: 1px solid var(--border-light) !important; font-size: 12px; padding: 8px; }
+
+/* Consolidated Remove Button Rule */
 .remove-btn { background: #941a1a !important; border: none !important; }
+.remove-btn:hover { opacity: 0.8; }
+
+.active-build { background: #1976D2 !important; border-color: #42a5f5 !important; box-shadow: 0 0 0 2px #42a5f566; }
+#speedBtn.fast { background: #FF9800 !important; }
+
+/* Tower Color Tags */
+.buff-choice { background: #5c3d99 !important; border-color: #7b52cc !important; }
+.flame-choice { background: #d84315 !important; border-color: #bf360c !important; }
 .ice-btn { background: #0288D1 !important; border-color: #29b6f6 !important; }
 .accel-btn { background: #9C27B0 !important; border-color: #E040FB !important; }
 .accel-choice { background: #7B1FA2 !important; border-color: #9C27B0 !important; }
 .radar-btn { background: #00796B !important; border-color: #00E676 !important; }
-.farm-btn { background: #8BC34A !important; border-color: #689F38 !important; color: #111;}
+.trap-btn { background: #795548 !important; border-color: #8D6E63 !important; }
+.farm-btn { background: #8BC34A !important; border-color: #689F38 !important; color: #111; }
 .farm-btn:hover { background: #9CCC65 !important; }
-button.active-build { background: #1976D2 !important; border-color: #42a5f5 !important; box-shadow: 0 0 0 2px #42a5f566; }
-#speedBtn.fast { background: #FF9800 !important; }
 
-#researchMenu { margin-top: 15px; padding-top: 10px; border-top: 2px solid #444; }
-#researchMenu button { width: 100%; height: auto; margin-bottom: 5px; background: #37474f; border-color: #546e7a; text-align: left; padding: 8px; }
+/* =========================================
+   6. RESEARCH MENU
+   ========================================= */
+#researchMenu { 
+  margin-top: 15px; 
+  padding-top: 10px; 
+  border-top: 2px solid var(--border-dark); 
+}
+
+#researchMenu button { 
+  width: 100%; height: auto; 
+  margin-bottom: 5px; 
+  background: #37474f; 
+  border-color: #546e7a; 
+  text-align: left; 
+  padding: 8px; 
+}
+
 #researchMenu button:hover:not(:disabled) { background: #455a64; }
-#researchMenu button:disabled { background: #1b282e; color: #4CAF50; cursor: default; border-color: #2e7d32; opacity: 0.8; }
+#researchMenu button:disabled { 
+  background: #1b282e; 
+  color: var(--color-success); 
+  cursor: default; 
+  border-color: #2e7d32; 
+  opacity: 0.8; 
+}
+
+/* =========================================
+   7. MODALS
+   ========================================= */
+#saveModal {
+  position: fixed; 
+  top: 0; left: 0; 
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.85); 
+  z-index: 200;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+}
+
+.modal-content {
+  background: var(--bg-panel); 
+  padding: 20px; 
+  border: 2px solid var(--border-mid);
+  border-radius: 10px; 
+  width: 450px; 
+  max-width: 90%;
+  box-shadow: 0px 10px 30px rgba(0,0,0,0.5);
+}
+
+.save-slot {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  background: var(--bg-main); 
+  padding: 12px; 
+  border: 1px solid var(--border-dark); 
+  border-radius: 5px;
+}
+
+.save-slot div div:first-child { 
+  font-weight: bold; color: #ffd700; font-size: 14px; margin-bottom: 4px; 
+}
+
+.save-slot div div:last-child { 
+  font-size: 12px; color: var(--text-muted); 
+}
+
+.save-slot .actions { 
+  display: flex; gap: 6px; 
+}
+
+.save-slot button { 
+  padding: 6px 12px; 
+  font-weight: bold; 
+  border: none; 
+  border-radius: 4px; 
+  cursor: pointer; 
+  color: var(--text-main); 
+}
