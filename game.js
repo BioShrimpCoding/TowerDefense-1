@@ -25,8 +25,16 @@ const MAP_DATA = [
 
 let currentMapIndex = 0, startPos = {x:0, y:6}, endPos = {x:19, y:6};
 
-let metaTech = { tokens: 0, discount: 0, lives: 0, farmInc: 0 };
-function loadMeta() { let m = localStorage.getItem('dd_meta'); if(m) metaTech = JSON.parse(m); updateMetaUI(); }
+let metaTech = { tokens: 0, discount: 0, lives: 0, farmInc: 0, unlockedEnemies: [] };
+function loadMeta() { 
+    let m = localStorage.getItem('dd_meta'); 
+    if(m) {
+        metaTech = JSON.parse(m); 
+        if (!metaTech.unlockedEnemies) metaTech.unlockedEnemies = [];
+    }
+    updateMetaUI(); 
+}
+
 function saveMeta() { localStorage.setItem('dd_meta', JSON.stringify(metaTech)); updateMetaUI(); }
 window.buyMeta = (type) => { 
     let cost = (metaTech[type] + 1) * 5; 
@@ -126,7 +134,7 @@ const ENEMY_TYPES = {
   FLYER:     { color: '#E0E0E0', speed: 1.5, hp: 8,   armor: 0, reward: 20, isFlying: true },
   GHOST:     { color: '#9E9E9E', speed: 1.1, hp: 10,  armor: 0, reward: 25, isCamo: true },
   HEALER:    { color: '#4CAF50', speed: 1.0, hp: 15,  armor: 1, reward: 30, isHealer: true },
-  CARRIER:   { color: '#607D8B', speed: 0.5, hp: 40,  armor: 2, reward: 50, spawns: 'RUNNER', spawnCount: 3 },
+  CARRIER:   { color: '#607D8B', speed: 0.5, hp: 40,  armor: 2, reward: 50, spawns: 'RUNNER', spawnCount: 10 },
   SHIELD:    { color: '#00BCD4', speed: 1.3, hp: 12,  armor: 0, reward: 30, isShield: true }, 
   CHAMELEON: { color: '#E91E63', speed: 1.1, hp: 40,  armor: 1, reward: 35, isChameleon: true },
   SLIME:     { color: '#8BC34A', speed: 0.7, hp: 60,  armor: 0, reward: 45, isSlime: true, spawns: 'RUNNER', spawnCount: 3 },
@@ -174,7 +182,6 @@ function updateWavePreview() {
   for(const[t,c] of Object.entries(comp)) if(c>0) html += `<span class="wave-pill" style="background:${WAVE_COLORS[t]}22;border:1px solid ${WAVE_COLORS[t]};color:${WAVE_COLORS[t]};">${c} ${t}</span>`;
   document.getElementById('waveComposition').innerHTML = html;
 }
-
 function updateSelectionUI() {
   const side = document.getElementById('statsContent');
   if (!selectedTower && !selectedEnemy) { side.innerHTML = '<p style="color:#aaa;text-align:center;margin-top:30px;">Select a unit.</p>'; return; }
@@ -199,14 +206,15 @@ function updateSelectionUI() {
   const airCol = (t.type==='SNIPER'||t.upgrades.radar>0) ? '#00E676' : '#ff4444';
   const rStr = (t.type==='SNIPER'||t.upgrades.radar>0) ? `<span style="color:#00E676;">Active</span>` : `<span style="color:#aaa;">None</span>`;
 
-  let lvlMax = isF ? 5 : 25;
+  let lvlMax = isF ? 5 : 20;
+  
   let h = `<h3 style="border-bottom:2px solid ${t.color};padding-bottom:5px;">${t.type}</h3>${row('Level:', t.level + ` / ${lvlMax}`)}${row('Sell:', `$${sellVal}`, '#ffd700')}<br>`;
-
+  
   if (isF) h += row('Income:', `+$${t.income}/wave`, '#FFD700') + row('Total Gen:', `$${t.totalGenerated}`, '#FFD700') + row('Limit:', `${towers.filter(x=>x.isFarm).length} / 8`);
   else if (isB) h += row('Aura Radius:', t.range.toFixed(1)) + row('Buffing:', 'All Stats', '#FFD700');
   else if (isE) h += row('Constructs:', `${t.constructs.length} / ${t.maxConstructs}`, '#FFC107') + row('C. Dmg:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('C. Rng:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('C. Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Buff Dur:', '5s', '#FFC107') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
   else if (isI) h += row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Tick Rate:', `${(60/t.reloadTime).toFixed(2)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Slow Lvl:', t.slowLevel, '#29b6f6');
-  else if (isA) h += row('Damage:', `${t.damage.toFixed(1)}/tk`, t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Downtime:', `${(t.reloadTime/60).toFixed(1)}s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Beam Time:', `${(t.duration/60).toFixed(1)}s`, t.duration>t.baseDuration?'#FFD700':'white') + row('Targets:', t.upgrades.lasers || 1, (t.upgrades.lasers||1)>1?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
+  else if (isA) h += row('Damage:', `${t.damage.toFixed(1)}/tk`, t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Downtime:', `${(t.reloadTime/60).toFixed(1)}s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Beam Time:', `${((t.baseDuration || t.duration)/60).toFixed(1)}s`, '#FFD700') + row('Targets:', t.upgrades.lasers || 1, (t.upgrades.lasers||1)>1?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
   else if (isT) h += row('Trap Dmg:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Throw Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Sensors:', rStr) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
   else {
     if (isR && !t.hasSpotter) h += `<div style="color:#ff4444; font-weight:bold; text-align:center;">OFFLINE: NEEDS SPOTTER</div>`;
@@ -225,65 +233,151 @@ function updateSelectionUI() {
   if (t.level >= lvlMax) {
       h += `<button style="width:100%; opacity:0.5; padding:8px 0; margin-bottom:4px; font-weight:bold;" disabled>MAX LEVEL (${lvlMax})</button>`;
   } else {
-      let rB = (!isF && !isB) ? (t.type==='SNIPER' ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (Native)</button>` : (t.upgrades.radar>0 ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (MAX)</button>` : `<button class="radar-btn" onclick="upgradeRadar()" style="flex:1;">Radar $150</button>`)) : '';
+      let rB = (!isF && !isB) ? (t.type==='SNIPER' ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (Native)</button>` : (t.upgrades.radar>0 ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (MAX)</button>` : `<button class="radar-btn" onclick="upgradeTower('radar')" style="flex:1;">Radar $150</button>`)) : '';
 
-      if (isF) h += `<button class="farm-btn" onclick="upgradeFarm()" style="margin-bottom:4px;">Upgrade Yield $${FARM_UPGRADE_COSTS[t.level]}</button>`;
-      else if (isB) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeSpeed()" style="flex:1">Potency $${t.upgrades.speed*30}</button><button onclick="upgradeRange()" style="flex:1">Aura Rng $${t.upgrades.range*25}</button></div>`;
-      else if (isE) h += `<button onclick="upgradeEngieAmount()" style="margin-bottom:4px;">Add Construct $${t.upgrades.amount*200}</button><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeSpeed()" style="flex:1">Fire Rate $${t.upgrades.speed*30}</button><button onclick="upgradeDamage()" style="flex:1">Damage $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeRange()" style="flex:1">Range $${t.upgrades.range*25}</button>${rB}</div>`;
-      else if (isI) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeSpeed()" style="flex:1">Tick Rate $${t.upgrades.speed*30}</button><button onclick="upgradeRange()" style="flex:1">Range $${t.upgrades.range*25}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;">${rB}<button class="ice-btn" onclick="upgradeSlowPower()" style="flex:1">Slow Pwr $${(t.slowLevel+1)*40}</button></div>`;
+      if (isF) h += `<button class="farm-btn" onclick="upgradeTower('farm')" style="margin-bottom:4px;">Upgrade Yield $${FARM_UPGRADE_COSTS[t.level]}</button>`;
+      else if (isB) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Potency $${t.upgrades.speed*30}</button><button onclick="upgradeTower('range')" style="flex:1">Aura Rng $${t.upgrades.range*25}</button></div>`;
+      else if (isE) h += `<button onclick="upgradeTower('amount')" style="margin-bottom:4px;">Add Construct $${t.upgrades.amount*200}</button><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Fire Rate $${t.upgrades.speed*30}</button><button onclick="upgradeTower('damage')" style="flex:1">Damage $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*25}</button>${rB}</div>`;
+      else if (isI) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Tick Rate $${t.upgrades.speed*30}</button><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*25}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;">${rB}<button class="ice-btn" onclick="upgradeTower('slow')" style="flex:1">Slow Pwr $${(t.slowLevel+1)*40}</button></div>`;
       else if (isA) {
           let laserCost = 1000 * Math.pow(2, (t.upgrades.lasers || 1) - 1);
-          let laserBtn = (t.upgrades.lasers || 1) >= 5 ? `<button class="accel-choice" style="width:100%;opacity:0.5;margin-bottom:4px;" disabled>Targets (MAX)</button>` : `<button class="accel-choice" onclick="upgradeAccelLasers()" style="width:100%;margin-bottom:4px;">Extra Laser $${laserCost}</button>`;
-          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeSpeed()" style="flex:1">Recharge $${t.upgrades.speed*50}</button><button onclick="upgradeDamage()" style="flex:1">Power $${t.upgrades.damage*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeRange()" style="flex:1">Range $${t.upgrades.range*40}</button><button class="accel-choice" onclick="upgradeAccelDuration()" style="flex:1">Duration $${t.upgrades.duration*50}</button></div>${laserBtn}<div style="display:flex;gap:4px;margin-bottom:4px;">${rB}</div>`;
+          let laserBtn = (t.upgrades.lasers || 1) >= 5 ? `<button class="accel-choice" style="width:100%;opacity:0.5;margin-bottom:4px;" disabled>Targets (MAX)</button>` : `<button class="accel-choice" onclick="upgradeTower('lasers')" style="width:100%;margin-bottom:4px;">Extra Laser $${laserCost}</button>`;
+          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Recharge $${t.upgrades.speed*50}</button><button onclick="upgradeTower('damage')" style="flex:1">Power $${t.upgrades.damage*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*40}</button><button class="accel-choice" onclick="upgradeTower('duration')" style="flex:1">Duration $${t.upgrades.duration*50}</button></div>${laserBtn}<div style="display:flex;gap:4px;margin-bottom:4px;">${rB}</div>`;
       }
       else {
-          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeSpeed()" style="flex:1">Speed $${t.upgrades.speed*30}</button><button onclick="upgradeDamage()" style="flex:1">Power $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeRange()" style="flex:1">Range $${t.upgrades.range*25}</button>${rB}</div>`;
-          if (ty.isFlame) h += `<button class="flame-choice" onclick="upgradeDefenseMelt()" style="width:100%;margin-bottom:4px;">Def Melt $${(t.meltLevel+1)*50}</button>`;
+          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Speed $${t.upgrades.speed*30}</button><button onclick="upgradeTower('damage')" style="flex:1">Power $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*25}</button>${rB}</div>`;
+          if (ty.isFlame) h += `<button class="flame-choice" onclick="upgradeTower('melt')" style="width:100%;margin-bottom:4px;">Def Melt $${(t.meltLevel+1)*50}</button>`;
       }
   }
   h += `<button class="remove-btn" onclick="removeTower()" style="width:100%;">SELL $${sellVal}</button></div>`;
   side.innerHTML = h;
 }
 
+
+
 class Enemy {
   constructor(path, typeKey) {
     const s = ENEMY_TYPES[typeKey];
-    this.path = path; this.pathIndex = 0; this.type = typeKey;
-    this.x = startPos.x * TILE_SIZE + TILE_SIZE / 2; this.y = startPos.y * TILE_SIZE + TILE_SIZE / 2;
-    this.baseSpeed = s.speed; this.speed = s.speed; this.color = s.color; this.reward = s.reward;
-    this.maxHealth = Math.max(1, Math.floor(s.hp * 0.75 * Math.pow(1.25, waveNumber))); this.health = this.maxHealth;
+    this.path = path; 
+    this.pathIndex = 0; 
+    this.type = typeKey; // Ensures the string identifier is saved
+    this.x = startPos.x * TILE_SIZE + TILE_SIZE / 2; 
+    this.y = startPos.y * TILE_SIZE + TILE_SIZE / 2;
+    this.baseSpeed = s.speed; 
+    this.speed = s.speed; 
+    this.color = s.color; 
+    this.reward = s.reward;
+    this.maxHealth = Math.max(1, Math.floor(s.hp * 0.75 * Math.pow(1.25, waveNumber))); 
+    this.health = this.maxHealth;
     this.armor = s.armor; 
-    this.meltTicks = 0; this.slowTicks = 0; this.slowFactor = 1; this.alive = true;
-    this.isFlying = !!s.isFlying; this.isCamo = !!s.isCamo; this.isHealer = !!s.isHealer; 
-    this.isShield = !!s.isShield; this.isChameleon = !!s.isChameleon; this.isSlime = !!s.isSlime;
-    this.immuneTo = null; this.immuneTimer = 0;
-    this.spawns = s.spawns || null; this.spawnCount = s.spawnCount || 0;
-  }
-  update() {
-    if (!this.alive) return;
-    this.speed = this.slowTicks > 0 ? this.baseSpeed * this.slowFactor : this.baseSpeed;
-    if (this.slowTicks > 0) this.slowTicks--; if (this.meltTicks > 0) this.meltTicks--; if (this.immuneTimer > 0) this.immuneTimer--;
-    if (this.isHealer && frameCount % 60 === 0) { spawnParticles(this.x, this.y, '#4CAF50', 5); enemies.forEach(e => { const dSq = (e.x-this.x)**2 + (e.y-this.y)**2; if (e !== this && dSq <= 6400) e.health = Math.min(e.maxHealth, e.health + 5); }); }
-    
-    if (!this.path || this.pathIndex >= this.path.length) { this.alive = false; if (this.pathIndex >= this.path.length) lives--; return; }
-    const target = this.path[this.pathIndex], tx = target.x * TILE_SIZE + TILE_SIZE / 2, ty = target.y * TILE_SIZE + TILE_SIZE / 2, dx = tx - this.x, dy = ty - this.y, distSq = dx*dx + dy*dy;
-    if (distSq < this.speed*this.speed) this.pathIndex++; else { const d = Math.sqrt(distSq); this.x += (dx/d) * this.speed; this.y += (dy/d) * this.speed; }
-
-    if (this.health <= 0) { 
-      this.alive = false; gold += this.reward + research.bounty; spawnParticles(this.x, this.y, this.color, 15, 1.5); 
-      if (this.spawns) for(let i=0; i<this.spawnCount; i++) { let spawn = new Enemy(this.path, this.spawns); spawn.x = this.x + (Math.random()*20 - 10); spawn.y = this.y + (Math.random()*20 - 10); spawn.pathIndex = this.pathIndex; enemies.push(spawn); }
-    }
+    this.meltTicks = 0; 
+    this.slowTicks = 0; 
+    this.slowFactor = 1; 
+    this.alive = true;
+    this.isFlying = !!s.isFlying; 
+    this.isCamo = !!s.isCamo; 
+    this.isHealer = !!s.isHealer; 
+    this.isShield = !!s.isShield; 
+    this.isChameleon = !!s.isChameleon; 
+    this.isSlime = !!s.isSlime;
+    this.immuneTo = null; 
+    this.immuneTimer = 0;
+    this.spawns = s.spawns || null; 
+    this.spawnCount = s.spawnCount || 0;
   }
   takeDamage(dmg, sourceTowerType) { 
     if (this.isChameleon && this.immuneTimer > 0 && this.immuneTo === sourceTowerType) return 0;
-    let actualDmg = Math.max(0.5, dmg - Math.max(0, this.armor - research.piercing)); 
-    if (this.isShield) actualDmg = Math.min(1, actualDmg);
+    
+    // Don't take damage if already dead (prevents double-spawning)
+    if (!this.alive || this.health <= 0) return 0; 
+
+    let actualDmg = Math.max(0.5, dmg - Math.max(0, this.armor - (typeof research !== 'undefined' ? research.piercing : 0))); 
+    if (this.isShield) actualDmg = Math.ceil(actualDmg * 0.10);
+    
     this.health -= actualDmg; 
     if (this.isChameleon) { this.immuneTo = sourceTowerType; this.immuneTimer = 180; }
+    
+    // THE FIX: Trigger death instantly the moment health hits 0, instead of waiting for update()
+    if (this.health <= 0) {
+        this.triggerDeath();
+    }
+    
     return actualDmg; 
   }
+
+  // NEW DEDICATED DEATH FUNCTION
+  triggerDeath() {
+      this.alive = false; 
+      gold += this.reward + (typeof research !== 'undefined' ? research.bounty : 0); 
+      spawnParticles(this.x, this.y, this.color, 15, 1.5); 
+      
+      // 1. Force the Spawns out immediately
+      if (this.spawns && this.spawnCount > 0) {
+          for(let i=0; i<this.spawnCount; i++) { 
+              let spawn = new Enemy(this.path, this.spawns); 
+              spawn.x = this.x + (Math.random()*16 - 8); 
+              spawn.y = this.y + (Math.random()*16 - 8); 
+              spawn.pathIndex = this.pathIndex; 
+              enemies.push(spawn); 
+          }
+      }
+
+      // 2. Unlock in Bestiary safely
+      try {
+          if (typeof unlockEnemyInIndex === 'function') {
+              unlockEnemyInIndex(this.type);
+          }
+      } catch (e) {
+          console.error("Bestiary error:", e);
+      }
+  }
+
+  update() {
+    if (!this.alive) return;
+    
+    this.speed = this.slowTicks > 0 ? this.baseSpeed * this.slowFactor : this.baseSpeed;
+    if (this.slowTicks > 0) this.slowTicks--; 
+    if (this.meltTicks > 0) this.meltTicks--; 
+    if (this.immuneTimer > 0) this.immuneTimer--;
+    
+    if (this.isHealer && frameCount % 60 === 0) { 
+        spawnParticles(this.x, this.y, '#4CAF50', 5); 
+        enemies.forEach(e => { 
+            const dSq = (e.x-this.x)**2 + (e.y-this.y)**2; 
+            if (e !== this && dSq <= 6400) e.health = Math.min(e.maxHealth, e.health + 5); 
+        }); 
+    }
+    
+    if (!this.path || this.pathIndex >= this.path.length) { 
+        this.alive = false; 
+        if (this.pathIndex >= this.path.length) lives--; 
+        return; 
+    }
+    
+    const target = this.path[this.pathIndex];
+    const tx = target.x * TILE_SIZE + TILE_SIZE / 2;
+    const ty = target.y * TILE_SIZE + TILE_SIZE / 2;
+    const dx = tx - this.x;
+    const dy = ty - this.y;
+    const distSq = dx*dx + dy*dy;
+    
+    if (distSq < this.speed*this.speed) {
+        this.pathIndex++; 
+    } else { 
+        const d = Math.sqrt(distSq); 
+        this.x += (dx/d) * this.speed; 
+        this.y += (dy/d) * this.speed; 
+    }
+
+    // Failsafe in case health drops below 0 through some passive damage (like melting)
+    if (this.health <= 0) { 
+        this.triggerDeath();
+    }
+  }
+  
+
   draw() {
-    if (selectedEnemy === this) { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, (this.type === 'BOSS' ? 18 : 12) + 4, 0, Math.PI * 2); ctx.stroke(); }
+    if (typeof selectedEnemy !== 'undefined' && selectedEnemy === this) { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, (this.type === 'BOSS' ? 18 : 12) + 4, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = this.isCamo ? 0.4 : 1.0; ctx.fillStyle = this.slowTicks > 0 ? '#b3e5fc' : this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.type === 'BOSS' ? 18 : 12, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1.0;
     if (this.immuneTimer > 0) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, 10, 0, Math.PI * 2); ctx.stroke(); }
     if (this.isShield) { ctx.strokeStyle = '#00BCD4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, 15, 0, Math.PI * 2); ctx.stroke(); }
@@ -292,6 +386,7 @@ class Enemy {
     ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 22, 30, 4); ctx.fillStyle = 'lime'; ctx.fillRect(this.x - 15, this.y - 22, (this.health / this.maxHealth) * 30, 4);
   }
 }
+
 
 class Trap {
   constructor(x, y, damage, tower) {
@@ -580,36 +675,55 @@ class Tower {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center'; ctx.fillText(TOWER_TYPES[this.type].isBuff ? 'B' : (this.isRail ? 'R' : (this.isFarm ? '$' : (this.isEngie ? 'E' : (this.isTrapper ? 'T' : this.type[0])))), this.x, this.y + 3); ctx.textAlign = 'left';
   }
 }
-
 class Projectile {
-  constructor(sx, sy, target, tower, isBuff = false) {
-    this.x = sx; this.y = sy; this.target = target; this.tower = tower; this.isBuff = isBuff; this.damage = tower.damage; this.color = isBuff ? '#FFC107' : TOWER_TYPES[tower.type].bullet; this.speed = isBuff ? 6 : (tower.type === 'BOMB' ? 4 : 8); this.alive = true; this.isFlame = !!TOWER_TYPES[tower.type].isFlame; this.meltLevel = tower.meltLevel; this.splashRadius = TOWER_TYPES[tower.type].splashRadius || 0;
+  constructor(x, y, target, damage, speed, type, splash=0, src=null) {
+    this.x = x; this.y = y; 
+    this.target = target;
+    this.tx = target.x; this.ty = target.y; // Track last known X and Y
+    this.damage = damage; this.speed = speed; this.type = type; 
+    this.splash = splash; this.active = true; this.sourceTower = src;
   }
   update() {
-    const dx = this.target.x - this.x, dy = this.target.y - this.y, dist2 = dx*dx + dy*dy;
-    if (this.isBuff) {
-      if (dist2 < 25) {
-        if (this.target.timer !== undefined && this.target.buffTimer !== undefined) this.target.buffTimer = 300; else this.target.engieBuffTimer = 300;
-        this.alive = false; spawnParticles(this.x, this.y, '#FFC107', 4);
-      } else { const d = Math.sqrt(dist2); this.x += (dx / d) * this.speed; this.y += (dy / d) * this.speed; } return;
+    if (!this.active) return;
+    
+    // Update homing coordinates ONLY if target is still alive
+    if (this.target && this.target.alive) {
+        this.tx = this.target.x;
+        this.ty = this.target.y;
     }
-    if (dist2 < 25 || !this.target.alive) {
-        if (this.splashRadius > 0) {
-          playSFX('explosion'); spawnParticles(this.x, this.y, '#FF5722', 25, 2.0); 
-          const sr2 = this.splashRadius * this.splashRadius;
-          enemies.forEach(e => { if (((e.x-this.x)**2 + (e.y-this.y)**2) <= sr2) { if (e.isFlying && (this.tower.type !== 'SNIPER' && this.tower.upgrades.radar === 0)) return; this.tower.damageDealt += e.takeDamage(this.damage, this.tower.type); } });
-        } else if (this.target.alive) {
-          playSFX('hit'); spawnParticles(this.target.x, this.target.y, this.color, 4);
-          if (this.isFlame) { this.target.meltTicks = 180; this.target.armor = Math.max(0, this.target.armor - (0.2 + this.meltLevel * 0.3)); }
-          this.tower.damageDealt += this.target.takeDamage(this.damage, this.tower.type); 
+    
+    let dx = this.tx - this.x, dy = this.ty - this.y, dist = Math.hypot(dx, dy);
+    
+    if (dist < this.speed) {
+        this.active = false;
+        
+        // Only damage direct target if they haven't died yet
+        if (this.target && this.target.alive && dist < this.speed * 2) {
+            this.target.takeDamage(this.damage, this.sourceTower ? this.sourceTower.type : null);
         }
-        this.alive = false;
+        
+        // Splash damage always explodes at the coordinates, even if target died!
+        if (this.splash > 0) {
+            spawnParticles(this.tx, this.ty, '#ff9800', 15);
+            enemies.forEach(e => {
+                if (e.alive && Math.hypot(e.x - this.tx, e.y - this.ty) <= this.splash * TILE_SIZE) {
+                    e.takeDamage(this.damage * 0.5, this.sourceTower ? this.sourceTower.type : null);
+                }
+            });
+        } else {
+            spawnParticles(this.tx, this.ty, '#fff', 5);
+        }
     } else {
-        const d = Math.sqrt(dist2); this.x += (dx / d) * this.speed; this.y += (dy / d) * this.speed;
+        this.x += (dx / dist) * this.speed;
+        this.y += (dy / dist) * this.speed;
     }
   }
-  draw() { ctx.fillStyle = this.color; ctx.beginPath(); if (this.isBuff) ctx.arc(this.x, this.y, 3, 0, Math.PI*2); else ctx.arc(this.x, this.y, this.splashRadius ? 6 : 4, 0, Math.PI * 2); ctx.fill(); }
+  draw() {
+    ctx.fillStyle = this.type === 'SNIPER' ? '#000' : (this.splash > 0 ? '#ff9800' : '#ffeb3b');
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.splash > 0 ? 6 : 4, 0, Math.PI * 2); ctx.fill();
+  }
 }
+
 
 function drawHoverPreview() {
   pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
@@ -643,19 +757,108 @@ window.returnToMenu = () => { document.getElementById('game-root').style.display
 window.buyResearch = (type) => { const costs = { bounty: 500, piercing: 600, interest: 750 }; if (gold >= costs[type]) { gold -= costs[type]; if (type === 'bounty') research.bounty += 5; if (type === 'piercing') research.piercing += 2; if (type === 'interest') research.interest += 0.02; const btn = document.getElementById('res_' + type); if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; } } };
 window.setBuildType = t => { buildType = buildType === t ? null : t; selectedTower = null; selectedEnemy = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); if (buildType) { const btn = document.getElementById('btn_' + buildType); if (btn) btn.classList.add('active-build'); } updateSelectionUI(); drawHoverPreview(); };
 window.setTargetMode = (val) => { if (selectedTower) { selectedTower.targetMode = val; updateSelectionUI(); } };
+window.upgradeTower = (stat) => {
+    const t = selectedTower;
+    if (!t) return;
 
-window.upgradeSpeed = () => { const t = selectedTower; if (t && t.level < 25 && gold >= t.upgrades.speed * (t.type==='ACCEL'?50:30)) { gold -= t.upgrades.speed * (t.type==='ACCEL'?50:30); t.totalSpent += t.upgrades.speed * (t.type==='ACCEL'?50:30); t.baseReload *= 0.90; t.upgrades.speed++; t.level++; towers.forEach(x => x.applyBuffs(towers)); updateSelectionUI(); } };
-window.upgradeDamage = () => { const t = selectedTower; if (t && t.level < 25 && gold >= t.upgrades.damage * (t.type==='ACCEL'?60:40)) { gold -= t.upgrades.damage * (t.type==='ACCEL'?60:40); t.totalSpent += t.upgrades.damage * (t.type==='ACCEL'?60:40); t.baseDamage *= 1.20; t.upgrades.damage++; t.level++; towers.forEach(x => x.applyBuffs(towers)); updateSelectionUI(); } };
-window.upgradeRange = () => { const t = selectedTower; if (t && t.level < 25 && gold >= t.upgrades.range * (t.type==='ACCEL'?40:25)) { gold -= t.upgrades.range * (t.type==='ACCEL'?40:25); t.totalSpent += t.upgrades.range * (t.type==='ACCEL'?40:25); t.baseRange *= 1.15; t.upgrades.range++; t.level++; towers.forEach(x => x.applyBuffs(towers)); updateSelectionUI(); } };
-window.upgradeAccelDuration = () => { const t = selectedTower; if (t && t.level < 25 && gold >= t.upgrades.duration * 50) { gold -= t.upgrades.duration * 50; t.totalSpent += t.upgrades.duration * 50; t.baseDuration *= 1.20; t.upgrades.duration++; t.level++; towers.forEach(x => x.applyBuffs(towers)); updateSelectionUI(); } };
-window.upgradeAccelLasers = () => { const t = selectedTower; if (t && t.type === 'ACCEL' && t.level < 25) { t.upgrades.lasers = t.upgrades.lasers || 1; let cost = 1000 * Math.pow(2, t.upgrades.lasers - 1); if (gold >= cost && t.upgrades.lasers < 5) { gold -= cost; t.totalSpent += cost; t.upgrades.lasers++; t.level++; updateSelectionUI(); } } };
-window.upgradeEngieAmount = () => { const t = selectedTower; if (t && t.isEngie && t.level < 25 && gold >= t.upgrades.amount * 200) { gold -= t.upgrades.amount * 200; t.totalSpent += t.upgrades.amount * 200; t.upgrades.amount++; t.maxConstructs++; t.level++; updateSelectionUI(); } };
-window.upgradeRadar = () => { const t = selectedTower; if (t && t.type !== 'SNIPER' && t.upgrades.radar === 0 && t.level < 25 && gold >= 150) { gold -= 150; t.totalSpent += 150; t.upgrades.radar = 1; t.level++; updateSelectionUI(); } };
-window.upgradeDefenseMelt = () => { const t = selectedTower; if (t && t.level < 25 && gold >= (t.meltLevel + 1) * 50) { gold -= (t.meltLevel + 1) * 50; t.totalSpent += (t.meltLevel + 1) * 50; t.meltLevel++; t.level++; updateSelectionUI(); } };
-window.upgradeSlowPower = () => { const t = selectedTower; if (t && t.level < 25 && gold >= (t.slowLevel + 1) * 40) { gold -= (t.slowLevel + 1) * 40; t.totalSpent += (t.slowLevel + 1) * 40; t.slowLevel++; t.level++; updateSelectionUI(); } };
-window.cycleTargeting = () => { if (selectedTower) { const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random', 'Closest', 'Farthest', 'Highest Armor']; selectedTower.targetMode = modes[(modes.indexOf(selectedTower.targetMode) + 1) % modes.length]; updateSelectionUI(); } };
-window.upgradeFarm = () => { const t = selectedTower; if (t && t.isFarm && t.level < 5) { let cost = FARM_UPGRADE_COSTS[t.level]; if(gold >= cost) { gold -= cost; t.totalSpent += cost; t.level++; t.income = Math.floor(FARM_INCOME_LEVELS[t.level-1] * (1 + metaTech.farmInc * 0.1)); updateSelectionUI(); } } };
-window.removeTower = () => { if (!selectedTower) return; gold += Math.floor(selectedTower.totalSpent / 2); grid[selectedTower.gy][selectedTower.gx] = 0; towers = towers.filter(t => t !== selectedTower); recalculateAllPaths(); selectedTower = null; updateSelectionUI(); };
+    // Check Max Level
+    let lvlMax = t.isFarm ? 5 : 20;
+    if (t.level >= lvlMax) return;
+
+    let cost = 0;
+
+    // 1. Calculate the cost based on which stat was chosen
+    switch (stat) {
+        case 'speed': cost = t.upgrades.speed * (t.type === 'ACCEL' ? 50 : 30); break;
+        case 'damage': cost = t.upgrades.damage * (t.type === 'ACCEL' ? 60 : 40); break;
+        case 'range': cost = t.upgrades.range * (t.type === 'ACCEL' ? 40 : 25); break;
+        case 'duration': cost = t.upgrades.duration * 50; break;
+        case 'lasers': cost = 1000 * Math.pow(2, (t.upgrades.lasers || 1) - 1); break;
+        case 'amount': cost = t.upgrades.amount * 200; break;
+        case 'radar': cost = 150; break;
+        case 'melt': cost = (t.meltLevel + 1) * 50; break;
+        case 'slow': cost = (t.slowLevel + 1) * 40; break;
+        case 'farm': cost = FARM_UPGRADE_COSTS[t.level]; break;
+    }
+
+    // Special failsafes for one-off/capped upgrades
+    if (stat === 'radar' && (t.upgrades.radar >= 1 || t.type === 'SNIPER')) return;
+    if (stat === 'lasers' && (t.upgrades.lasers || 1) >= 5) return;
+
+    // 2. Execute transaction and apply math
+    if (gold >= cost) {
+        gold -= cost;
+        t.totalSpent += cost;
+
+        switch (stat) {
+            case 'speed': 
+                t.baseReload = Math.max(1, Math.floor(t.baseReload * 0.825)); 
+                t.upgrades.speed++; 
+                break;
+            case 'damage': 
+                t.baseDamage *= 1.30; 
+                t.upgrades.damage++; 
+                break;
+            case 'range': 
+                t.baseRange *= 1.2; 
+                t.upgrades.range++; 
+                break;
+            case 'duration': 
+                t.baseDuration = Math.round((t.baseDuration || 300) * 1.20); 
+                t.upgrades.duration++; 
+                break;
+            case 'lasers': 
+                t.upgrades.lasers = (t.upgrades.lasers || 1) + 1; 
+                break;
+            case 'amount': 
+                t.upgrades.amount++; 
+                t.maxConstructs++; 
+                break;
+            case 'radar': 
+                t.upgrades.radar = 1; 
+                break;
+            case 'melt': 
+                t.meltLevel++; 
+                break;
+            case 'slow': 
+                t.slowLevel++; 
+                break;
+            case 'farm':
+                // Uses t.level before the global ++ occurs, making the indexing perfectly match your old t.level-1 logic
+                t.income = Math.floor(FARM_INCOME_LEVELS[t.level] * (1 + metaTech.farmInc * 0.1));
+                break;
+        }
+
+        // 3. Apply global logic
+        t.level++;
+        towers.forEach(x => x.applyBuffs(towers));
+        updateSelectionUI();
+    }
+};
+
+// Kept completely separate since it's a free UI toggle, not a gold upgrade
+window.cycleTargeting = () => { 
+    if (selectedTower) { 
+        const modes = ['First', 'Last', 'Strongest', 'Weakest', 'Random', 'Closest', 'Farthest', 'Highest Armor']; 
+        selectedTower.targetMode = modes[(modes.indexOf(selectedTower.targetMode) + 1) % modes.length]; 
+        updateSelectionUI(); 
+    } 
+};
+
+
+
+
+
+
+window.removeTower = () => { 
+    if (!selectedTower) return; 
+    gold += Math.floor(selectedTower.totalSpent / 2); 
+    grid[selectedTower.gy][selectedTower.gx] = 0; 
+    towers = towers.filter(t => t !== selectedTower); 
+    recalculateAllPaths(); 
+    selectedTower = null; 
+    updateSelectionUI(); 
+};
 
 window.togglePause = () => { isPaused = !isPaused; const btn = document.getElementById('pauseBtn'); if (btn) { btn.innerText = isPaused ? 'RESUME' : 'PAUSE'; btn.style.background = isPaused ? '#FF9800' : ''; } };
 window.toggleSpeed = () => { gameSpeed = gameSpeed === 1 ? 2 : 1; const btn = document.getElementById('speedBtn'); if (btn) { btn.innerText = gameSpeed === 2 ? '2×' : '1×'; btn.classList.toggle('fast', gameSpeed === 2); } };
@@ -664,6 +867,7 @@ window.toggleMute = () => { const muteBtn = document.getElementById('muteBtn'); 
 window.restartGame = () => {
   gold = 10000; lives = 20 + (metaTech.lives * 5); waveNumber = 0; enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0; 
   enemies = []; towers = []; projectiles = []; particles = []; traps = [];
+  research = { bounty: 0, piercing: 0, interest: 0.01 };
   selectedTower = null; selectedEnemy = null; buildType = null; isPaused = false; isWaveActive = false; isGameOver = false; gameSpeed = 1; frameCount = 0; research = { bounty: 0, piercing: 0, interest: 0.01 };
   const pauseBtn = document.getElementById('pauseBtn'); if (pauseBtn) { pauseBtn.innerText = 'PAUSE'; pauseBtn.style.background = ''; }
   const speedBtn = document.getElementById('speedBtn'); if (speedBtn) { speedBtn.innerText = '1×'; speedBtn.classList.remove('fast'); }
@@ -695,32 +899,73 @@ canvas.addEventListener('mousedown', e => {
     }
   } else { selectedTower = null; selectedEnemy = null; updateSelectionUI(); }
 });
-
 function tick() {
   if (lives <= 0 || isPaused) return;
   frameCount++;
+  
   if (enemies.length === 0 && enemiesLeftToSpawn === 0) {
     if (isWaveActive) {
-      let farmGen = 0; towers.forEach(t => { if (t.isFarm) { farmGen += t.income; t.totalGenerated += t.income; } });
-      const interest = Math.floor(gold * research.interest); gold += 50 + waveNumber * 10 + interest + farmGen;
-      let dispText = `+ $${interest} int`; if (farmGen > 0) dispText += ` | + $${farmGen} farms`;
-      const intDisp = document.getElementById('interestDisplay'); if (intDisp) intDisp.innerText = dispText;
+      let farmGen = 0; 
+      towers.forEach(t => { if (t.isFarm) { farmGen += t.income; t.totalGenerated += t.income; } });
+      
+      const interest = Math.floor(gold * research.interest); 
+      const waveBonus = 50 + waveNumber * 10; // Separated this so we can show it!
+      
+      gold += waveBonus + interest + farmGen;
+      
+      // FIX: Now the UI accurately tells the player about ALL the money they just made
+      let dispText = `+$${waveBonus} Wave Bonus | +$${interest} Int`; 
+      if (farmGen > 0) dispText += ` | +$${farmGen} Farms`;
+      
+      const intDisp = document.getElementById('interestDisplay'); 
+      if (intDisp) intDisp.innerText = dispText;
+      
       if (selectedTower && selectedTower.isFarm) updateSelectionUI();
-      isWaveActive = false; waveCooldown = autoStartWaves ? 30 : 180; updateWavePreview();
+      isWaveActive = false; 
+      waveCooldown = autoStartWaves ? 30 : 180; 
+      updateWavePreview();
     } else {
       if (waveCooldown > 0) waveCooldown--;
-      else { waveNumber++; enemiesLeftToSpawn = waveNumber % 10 === 0 ? 1 : 5 + waveNumber; spawnTimer = 999; isWaveActive = true; const intDisp = document.getElementById('interestDisplay'); if (intDisp) intDisp.innerText = ''; updateWavePreview(); }
+      else { 
+          waveNumber++; 
+          enemiesLeftToSpawn = waveNumber % 10 === 0 ? 1 : 5 + waveNumber; 
+          spawnTimer = 999; 
+          isWaveActive = true; 
+          const intDisp = document.getElementById('interestDisplay'); 
+          if (intDisp) intDisp.innerText = ''; 
+          updateWavePreview(); 
+      }
     }
   }
+  
   if (enemiesLeftToSpawn > 0 && ++spawnTimer >= Math.max(5, 45 - waveNumber * 1.5)) {
     spawnTimer = 0; let type = 'NORMAL';
     if (waveNumber % 10 === 0 && waveNumber > 0) type = 'BOSS';
-    else if (waveNumber > 1) { const r = Math.random(); if(waveNumber>15&&r>0.9) type='SLIME'; else if(waveNumber>12&&r>0.85) type='CARRIER'; else if(waveNumber>10&&r>0.75) type='CHAMELEON'; else if(waveNumber>8&&r>0.65) type='SHIELD'; else if(waveNumber>9&&r>0.55) type='HEALER'; else if(waveNumber>7&&r>0.5) type='GHOST'; else if(waveNumber>4&&r>0.4) type='FLYER'; else if(waveNumber>3&&r>0.3) type='TANK'; else if(waveNumber>1&&r>0.2) type='RUNNER'; }
+    else if (waveNumber > 1) { 
+        const r = Math.random(); 
+        if(waveNumber>15&&r>0.9) type='SLIME'; 
+        else if(waveNumber>12&&r>0.85) type='CARRIER'; 
+        else if(waveNumber>10&&r>0.75) type='CHAMELEON'; 
+        else if(waveNumber>8&&r>0.65) type='SHIELD'; 
+        else if(waveNumber>9&&r>0.55) type='HEALER'; 
+        else if(waveNumber>7&&r>0.5) type='GHOST'; 
+        else if(waveNumber>4&&r>0.4) type='FLYER'; 
+        else if(waveNumber>3&&r>0.3) type='TANK'; 
+        else if(waveNumber>1&&r>0.2) type='RUNNER'; 
+    }
     const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
-    if (p || type === 'FLYER') enemies.push(new Enemy(p || [], type)); enemiesLeftToSpawn--;
+    if (p || type === 'FLYER') enemies.push(new Enemy(p || [], type)); 
+    enemiesLeftToSpawn--;
   }
-  towers.forEach(t => t.applyBuffs(towers)); towers.forEach(t => t.update());
-  enemies = enemies.filter(e => { e.update(); if (!e.alive && selectedEnemy === e) { selectedEnemy = null; updateSelectionUI(); } return e.alive; });
+  
+  towers.forEach(t => t.applyBuffs(towers)); 
+  towers.forEach(t => t.update());
+  
+  enemies = enemies.filter(e => { 
+      e.update(); 
+      if (!e.alive && selectedEnemy === e) { selectedEnemy = null; updateSelectionUI(); } 
+      return e.alive; 
+  });
   projectiles = projectiles.filter(p => { p.update(); return p.alive; }); 
   traps = traps.filter(tr => { tr.update(); return tr.alive; });
   particles = particles.filter(p => { p.update(); return p.life > 0; });
@@ -802,14 +1047,29 @@ window.updateSaveUI = () => {
     }
 };
 
-window.saveGame = (slot) => {
-    const state = {
-        map: currentMapIndex, gold: gold, lives: lives, waveNumber: waveNumber, research: research,
-        towers: towers.map(t => ({ gx: t.gx, gy: t.gy, type: t.type, level: t.level, targetMode: t.targetMode, totalSpent: t.totalSpent, damageDealt: t.damageDealt || 0, income: t.income, totalGenerated: t.totalGenerated, maxConstructs: t.maxConstructs, upgrades: t.upgrades, meltLevel: t.meltLevel, slowLevel: t.slowLevel, baseDamage: t.baseDamage, baseRange: t.baseRange, baseReload: t.baseReload, baseDuration: t.baseDuration })),
-        traps: traps.map(tr => ({ x: tr.x, y: tr.y, damage: tr.damage, towerGx: tr.tower.gx, towerGy: tr.tower.gy }))
+window.saveGame = (slot) => { 
+    if (lives <= 0) {
+        alert("Cannot save a game that is already over!");
+        return;
+    }
+    if (isWaveActive || enemies.length > 0 || enemiesLeftToSpawn > 0) {
+        alert("You can only save between waves! Finish the current wave first.");
+        return;
+    }
+
+    const state = { 
+        map: currentMapIndex, gold: gold, lives: lives, waveNumber: waveNumber, research: research, 
+        towers: towers.map(t => ({ 
+            gx: t.gx, gy: t.gy, type: t.type, level: t.level, targetMode: t.targetMode, totalSpent: t.totalSpent, 
+            damageDealt: t.damageDealt || 0, income: t.income, totalGenerated: t.totalGenerated, 
+            maxConstructs: t.maxConstructs, upgrades: t.upgrades, meltLevel: t.meltLevel, 
+            slowLevel: t.slowLevel, baseDamage: t.baseDamage, baseRange: t.baseRange, baseReload: t.baseReload, baseDuration: t.baseDuration 
+        })), 
+        traps: traps.map(tr => ({ x: tr.x, y: tr.y, type: tr.type, damage: tr.damage, splash: tr.splash, active: tr.active })) 
     };
+    
     localStorage.setItem('desktop_defender_save_' + slot, JSON.stringify(state));
-    updateSaveUI();
+    updateSaveUI(); 
 };
 
 window.loadGame = (slot) => {
@@ -913,3 +1173,145 @@ document.addEventListener('mouseout', (e) => {
         tooltip.style.display = 'none';
     }
 });
+function openEnemyIndex() {
+    const grid = document.getElementById('enemyIndexGrid');
+    grid.innerHTML = ''; // Clear the grid
+
+    // Loop through your master ENEMY_TYPES object
+    for (const [type, data] of Object.entries(ENEMY_TYPES)) {
+        
+        // Check if this enemy type exists in the global save list
+        const isUnlocked = metaTech.unlockedEnemies.includes(type);
+        
+        let cardHTML = '';
+        if (isUnlocked) {
+            // Unlocked: Show real stats and accurate color
+            cardHTML = `
+                <div style="border:2px solid ${data.color}; background:#333; padding:10px; border-radius:8px; text-align:center;">
+                    <div style="width:30px; height:30px; background:${data.color}; margin:0 auto 10px; border-radius:4px; border:1px solid #fff;"></div>
+                    <h4 style="color:${data.color}; margin-bottom:5px;">${type}</h4>
+                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Base HP: ${data.hp}</p>
+                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Speed: ${data.speed.toFixed(1)}</p>
+                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Armor: ${data.armor}</p>
+                    <p style="font-size:12px; margin:2px 0; color:#ffd700;">Reward: $${data.reward}</p>
+                </div>
+            `;
+        } else {
+            // Locked: Show mysterious silhouette and "???" stats
+            cardHTML = `
+                <div style="border:2px dashed #555; background:#222; padding:10px; border-radius:8px; text-align:center; opacity:0.6;">
+                    <div style="width:30px; height:30px; background:#111; margin:0 auto 10px; border-radius:4px;"></div>
+                    <h4 style="color:#777; margin-bottom:5px;">???</h4>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Base HP: ???</p>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Speed: ???</p>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Armor: ???</p>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Reward: ???</p>
+                </div>
+            `;
+        }
+        grid.innerHTML += cardHTML;
+    }
+
+    // Display the modal window
+    document.getElementById('enemyIndexModal').style.display = 'flex';
+}
+// ==========================================
+// SELF-HEALING BESTIARY LOGIC
+// ==========================================
+
+function unlockEnemyInIndex(enemyType) {
+    console.log("☠️ Enemy Died! Attempting to unlock:", enemyType);
+    
+    if (!enemyType) {
+        console.error("❌ No enemyType passed to unlock function!");
+        return;
+    }
+    
+    // Failsafe: Rebuild metaTech from storage if it's currently missing
+    if (typeof metaTech === 'undefined' || !metaTech) {
+        window.metaTech = JSON.parse(localStorage.getItem('dd_meta')) || { unlockedEnemies: [] };
+    }
+    
+    // Failsafe: Ensure the array exists inside the save file
+    if (!metaTech.unlockedEnemies) {
+        metaTech.unlockedEnemies = [];
+    }
+    
+    // Save to Bestiary
+    if (!metaTech.unlockedEnemies.includes(enemyType)) {
+        metaTech.unlockedEnemies.push(enemyType);
+        localStorage.setItem('dd_meta', JSON.stringify(metaTech));
+        console.log("✅ Successfully added to Bestiary. Current unlocks:", metaTech.unlockedEnemies);
+        
+        const modal = document.getElementById('enemyIndexModal');
+        if (modal && modal.style.display !== 'none') {
+            populateEnemyIndex();
+        }
+    }
+}
+
+function openEnemyIndex() {
+    const gameRoot = document.getElementById('game-root');
+    if (gameRoot && gameRoot.style.display !== 'none' && typeof paused !== 'undefined' && !paused) {
+        togglePause(); 
+    }
+    populateEnemyIndex();
+    document.getElementById('enemyIndexModal').style.display = 'flex';
+}
+
+function populateEnemyIndex() {
+    const grid = document.getElementById('enemyIndexGrid');
+    if (!grid) return;
+    grid.innerHTML = ''; 
+    
+    // Failsafe: Load metaTech if it hasn't loaded yet
+    if (typeof metaTech === 'undefined' || !metaTech) {
+        window.metaTech = JSON.parse(localStorage.getItem('dd_meta')) || { unlockedEnemies: [] };
+    }
+    
+    const unlocked = metaTech.unlockedEnemies || [];
+
+    for (const typeKey in ENEMY_TYPES) {
+        const data = ENEMY_TYPES[typeKey];
+        const isUnlocked = unlocked.includes(typeKey);
+        
+        // Determine the special ability text based on your enemy tags
+        let specialText = "None";
+        if (typeKey === 'BOSS') specialText = "Massive HP. Spawns every 10 Waves.";
+        else if (data.isCamo) specialText = "Invisible without Radar";
+        else if (data.isFlying) specialText = "Airborne (Needs Anti-Air)";
+        else if (data.isHealer) specialText = "Heals Nearby Enemies";
+        else if (data.isShield) specialText = "Takes 90% Less Damage";
+        else if (data.isChameleon) specialText = "Adapts Immunity to Towers";
+        else if (data.isSlime) specialText = `Splits into ${data.spawnCount} ${data.spawns}s`;
+        else if (data.spawns) specialText = `Spawns ${data.spawnCount} ${data.spawns}s on death`;
+
+        if (isUnlocked) {
+            // UNLOCKED CARD (Now features the Special text in cyan)
+            grid.innerHTML += `
+                <div style="border:2px solid ${data.color}; background:#222; padding:10px; border-radius:8px; text-align:center;">
+                    <div style="width:30px; height:30px; background:${data.color}; margin:0 auto 10px; border-radius:50%;"></div>
+                    <h4 style="color:${data.color}; margin-bottom:5px;">${typeKey}</h4>
+                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Base HP: ${data.hp}</p>
+                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Speed: ${data.speed}</p>
+                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Armor: ${data.armor}</p>
+                    <p style="font-size:12px; margin:4px 0; color:#00BCD4; font-weight:bold;">Special: ${specialText}</p>
+                    <p style="font-size:12px; margin:2px 0; color:#ffd700;">Reward: $${data.reward}</p>
+                </div>
+            `;
+        } else {
+            // LOCKED CARD
+            grid.innerHTML += `
+                <div style="border:2px dashed #555; background:#222; padding:10px; border-radius:8px; text-align:center; opacity:0.6;">
+                    <div style="width:30px; height:30px; background:#111; margin:0 auto 10px; border-radius:50%; border: 1px solid #333;"></div>
+                    <h4 style="color:#777; margin-bottom:5px;">???</h4>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Base HP: ???</p>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Speed: ???</p>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Armor: ???</p>
+                    <p style="font-size:12px; margin:4px 0; color:#555; font-weight:bold;">Special: ???</p>
+                    <p style="font-size:12px; margin:2px 0; color:#555;">Reward: ???</p>
+                </div>
+            `;
+        }
+    }
+}
