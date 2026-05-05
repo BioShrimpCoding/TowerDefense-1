@@ -297,6 +297,11 @@ class Enemy {
     this.health -= actualDmg; 
     if (this.isChameleon) { this.immuneTo = sourceTowerType; this.immuneTimer = 180; }
     
+    // Apply FLAME tower melt effect
+    if (sourceTowerType === 'FLAME') {
+      this.meltTicks = 300;
+    }
+    
     // THE FIX: Trigger death instantly the moment health hits 0, instead of waiting for update()
     if (this.health <= 0) {
         this.triggerDeath();
@@ -550,8 +555,8 @@ class Tower {
           else if (this.targetMode === 'Farthest') inRange.sort((a,b) => distSq(b) - distSq(a)); 
           else if (this.targetMode === 'Highest Armor') inRange.sort((a,b) => b.armor - a.armor);
           
-          let target = inRange[i % inRange.length];
-          projectiles.push(new Projectile(c.x, c.y, target, this, false)); 
+          let target = inRange[Math.floor(Math.random() * inRange.length)];
+          projectiles.push(new Projectile(c.x, c.y, target, this.damage, 6, this.type, 0, this)); 
           playSFX('shoot'); c.timer = 0;
         }
       });
@@ -561,7 +566,7 @@ class Tower {
           towers.forEach(t => { if (t.type === 'BUFF' || t.isFarm) return; if (distSq(t) <= r2) validTargets.push({obj: t, buffTimer: t.engieBuffTimer || 0}); });
           this.constructs.forEach(c => validTargets.push({obj: c, buffTimer: c.buffTimer}));
           validTargets.sort((a,b) => a.buffTimer - b.buffTimer);
-          if (validTargets.length > 0 && validTargets[0].buffTimer < 150) { projectiles.push(new Projectile(this.x, this.y, validTargets[0].obj, this, true)); this.timer = 0; } else this.timer = 60;
+          if (validTargets.length > 0 && validTargets[0].buffTimer < 150) { projectiles.push(new Projectile(this.x, this.y, validTargets[0].obj, 0, 4, 'BUFF', 0, this)); this.timer = 0; } else this.timer = 60;
       }
       return;
     }
@@ -607,6 +612,7 @@ class Tower {
       if (inRange.length > 0) {
         if (this.targetMode === 'First') inRange.sort((a, b) => b.pathIndex - a.pathIndex); else if (this.targetMode === 'Last') inRange.sort((a, b) => a.pathIndex - b.pathIndex); else if (this.targetMode === 'Strongest') inRange.sort((a, b) => b.health - a.health); else if (this.targetMode === 'Weakest') inRange.sort((a, b) => a.health - b.health); else if (this.targetMode === 'Random') inRange.sort(() => Math.random() - 0.5); else if (this.targetMode === 'Closest') inRange.sort((a,b) => distSq(a) - distSq(b)); else if (this.targetMode === 'Farthest') inRange.sort((a,b) => distSq(b) - distSq(a)); else if (this.targetMode === 'Highest Armor') inRange.sort((a,b) => b.armor - a.armor);
         const target = inRange[0];
+        const splash = TOWER_TYPES[this.type].splashRadius ? TOWER_TYPES[this.type].splashRadius / TILE_SIZE : 0;
         
         if (this.isRail) {
             playSFX('railgun');
@@ -637,7 +643,7 @@ class Tower {
                 }
             });
         } else {
-            projectiles.push(new Projectile(this.x, this.y, target, this, false)); 
+            projectiles.push(new Projectile(this.x, this.y, target, this.damage, 6, this.type, splash, this)); 
             if(this.type === 'SNIPER') playSFX('sniper'); else playSFX('shoot');
         }
         this.timer = 0;
@@ -647,6 +653,13 @@ class Tower {
   draw() {
     if (this.engieBuffTimer > 0) { ctx.strokeStyle = '#FFC107'; ctx.lineWidth = 2; ctx.strokeRect(this.gx * TILE_SIZE + 1, this.gy * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2); }
     if (selectedTower === this && !this.isFarm) { ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke(); }
+    
+    // DEBUG: Show timer/reload status on selected tower
+    if (selectedTower === this && !this.isFarm && !TOWER_TYPES[this.type].isBuff) {
+      ctx.fillStyle = '#00FF00';
+      ctx.font = 'bold 12px Arial';
+      ctx.fillText(`Timer: ${this.timer}/${this.reloadTime}`, this.x - 30, this.y - 40);
+    }
     
     if (this.isRail && this.hasSpotter && this.spotterLink) {
         ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
@@ -681,7 +694,7 @@ class Projectile {
     this.target = target;
     this.tx = target.x; this.ty = target.y; // Track last known X and Y
     this.damage = damage; this.speed = speed; this.type = type; 
-    this.splash = splash; this.active = true; this.sourceTower = src;
+    this.splash = splash; this.active = true; this.alive = true; this.sourceTower = src;
   }
   update() {
     if (!this.active) return;
@@ -696,10 +709,11 @@ class Projectile {
     
     if (dist < this.speed) {
         this.active = false;
+        this.alive = false;
         
         // Only damage direct target if they haven't died yet
         if (this.target && this.target.alive && dist < this.speed * 2) {
-            this.target.takeDamage(this.damage, this.sourceTower ? this.sourceTower.type : null);
+            this.sourceTower.damageDealt += this.target.takeDamage(this.damage, this.sourceTower ? this.sourceTower.type : null);
         }
         
         // Splash damage always explodes at the coordinates, even if target died!
@@ -707,13 +721,35 @@ class Projectile {
             spawnParticles(this.tx, this.ty, '#ff9800', 15);
             enemies.forEach(e => {
                 if (e.alive && Math.hypot(e.x - this.tx, e.y - this.ty) <= this.splash * TILE_SIZE) {
-                    e.takeDamage(this.damage * 0.5, this.sourceTower ? this.sourceTower.type : null);
+                    this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, this.sourceTower ? this.sourceTower.type : null);
                 }
             });
         } else {
             spawnParticles(this.tx, this.ty, '#fff', 5);
         }
     } else {
+        // Check for collision with ANY enemy while traveling
+        for (let enemy of enemies) {
+            if (enemy.alive && Math.hypot(enemy.x - this.x, enemy.y - this.y) <= 12) {
+                this.active = false;
+                this.alive = false;
+                this.sourceTower.damageDealt += enemy.takeDamage(this.damage, this.sourceTower ? this.sourceTower.type : null);
+                
+                // Splash damage if applicable
+                if (this.splash > 0) {
+                    spawnParticles(enemy.x, enemy.y, '#ff9800', 15);
+                    enemies.forEach(e => {
+                        if (e.alive && Math.hypot(e.x - enemy.x, e.y - enemy.y) <= this.splash * TILE_SIZE) {
+                            this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, this.sourceTower ? this.sourceTower.type : null);
+                        }
+                    });
+                } else {
+                    spawnParticles(enemy.x, enemy.y, '#fff', 5);
+                }
+                return;
+            }
+        }
+        
         this.x += (dx / dist) * this.speed;
         this.y += (dy / dist) * this.speed;
     }
@@ -982,7 +1018,20 @@ function update() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (bgCanvas.width > 0) ctx.drawImage(bgCanvas, 0, 0);
 
-    traps.forEach(tr => tr.draw()); towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw()); particles.forEach(p => p.draw()); 
+    traps.forEach(tr => tr.draw()); towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw()); particles.forEach(p => p.draw());
+    
+    // DEBUG: Show tower and projectile counts
+    ctx.fillStyle = '#00FF00';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText(`Towers: ${towers.length} | Enemies: ${enemies.length} | Projectiles: ${projectiles.length}`, 10, 20);
+    
+    // DEBUG: Show individual tower types
+    ctx.font = 'bold 11px Arial';
+    let typeCount = {};
+    towers.forEach(t => { typeCount[t.type] = (typeCount[t.type] || 0) + 1; });
+    let towerLine = "Tower Types: ";
+    Object.entries(typeCount).forEach(([type, count]) => { towerLine += `${type}(${count}) `; });
+    ctx.fillText(towerLine, 10, 38); 
 
     if (isPaused) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'white'; ctx.font = 'bold 48px Arial'; ctx.textAlign = 'center'; ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2); ctx.textAlign = 'left'; }
     if (lives <= 0) { 
@@ -1065,7 +1114,7 @@ window.saveGame = (slot) => {
             maxConstructs: t.maxConstructs, upgrades: t.upgrades, meltLevel: t.meltLevel, 
             slowLevel: t.slowLevel, baseDamage: t.baseDamage, baseRange: t.baseRange, baseReload: t.baseReload, baseDuration: t.baseDuration 
         })), 
-        traps: traps.map(tr => ({ x: tr.x, y: tr.y, type: tr.type, damage: tr.damage, splash: tr.splash, active: tr.active })) 
+        traps: traps.map(tr => ({ x: tr.x, y: tr.y, damage: tr.damage, towerGx: tr.tower ? tr.tower.gx : null, towerGy: tr.tower ? tr.tower.gy : null })) 
     };
     
     localStorage.setItem('desktop_defender_save_' + slot, JSON.stringify(state));
@@ -1101,7 +1150,7 @@ window.loadGame = (slot) => {
         state.traps.forEach(trData => {
             let tr = new Trap(trData.x, trData.y, trData.damage, null);
             tr.tower = towers.find(tw => tw.gx === trData.towerGx && tw.gy === trData.towerGy);
-            if (tr.tower) traps.push(tr);
+            if (tr.tower) { tr.tower = tr.tower; traps.push(tr); }
         });
     }
     
@@ -1173,48 +1222,7 @@ document.addEventListener('mouseout', (e) => {
         tooltip.style.display = 'none';
     }
 });
-function openEnemyIndex() {
-    const grid = document.getElementById('enemyIndexGrid');
-    grid.innerHTML = ''; // Clear the grid
 
-    // Loop through your master ENEMY_TYPES object
-    for (const [type, data] of Object.entries(ENEMY_TYPES)) {
-        
-        // Check if this enemy type exists in the global save list
-        const isUnlocked = metaTech.unlockedEnemies.includes(type);
-        
-        let cardHTML = '';
-        if (isUnlocked) {
-            // Unlocked: Show real stats and accurate color
-            cardHTML = `
-                <div style="border:2px solid ${data.color}; background:#333; padding:10px; border-radius:8px; text-align:center;">
-                    <div style="width:30px; height:30px; background:${data.color}; margin:0 auto 10px; border-radius:4px; border:1px solid #fff;"></div>
-                    <h4 style="color:${data.color}; margin-bottom:5px;">${type}</h4>
-                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Base HP: ${data.hp}</p>
-                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Speed: ${data.speed.toFixed(1)}</p>
-                    <p style="font-size:12px; margin:2px 0; color:#ddd;">Armor: ${data.armor}</p>
-                    <p style="font-size:12px; margin:2px 0; color:#ffd700;">Reward: $${data.reward}</p>
-                </div>
-            `;
-        } else {
-            // Locked: Show mysterious silhouette and "???" stats
-            cardHTML = `
-                <div style="border:2px dashed #555; background:#222; padding:10px; border-radius:8px; text-align:center; opacity:0.6;">
-                    <div style="width:30px; height:30px; background:#111; margin:0 auto 10px; border-radius:4px;"></div>
-                    <h4 style="color:#777; margin-bottom:5px;">???</h4>
-                    <p style="font-size:12px; margin:2px 0; color:#555;">Base HP: ???</p>
-                    <p style="font-size:12px; margin:2px 0; color:#555;">Speed: ???</p>
-                    <p style="font-size:12px; margin:2px 0; color:#555;">Armor: ???</p>
-                    <p style="font-size:12px; margin:2px 0; color:#555;">Reward: ???</p>
-                </div>
-            `;
-        }
-        grid.innerHTML += cardHTML;
-    }
-
-    // Display the modal window
-    document.getElementById('enemyIndexModal').style.display = 'flex';
-}
 // ==========================================
 // SELF-HEALING BESTIARY LOGIC
 // ==========================================
@@ -1251,8 +1259,7 @@ function unlockEnemyInIndex(enemyType) {
 }
 
 function openEnemyIndex() {
-    const gameRoot = document.getElementById('game-root');
-    if (gameRoot && gameRoot.style.display !== 'none' && typeof paused !== 'undefined' && !paused) {
+    if (document.getElementById('game-root').style.display !== 'none' && !isPaused) {
         togglePause(); 
     }
     populateEnemyIndex();
