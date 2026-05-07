@@ -284,7 +284,7 @@ const ENEMY_TYPES = {
   INVISIBLE: { color: '#CCCCCC', speed: 1.2, hp: 12,  armor: 0, reward: 35, isInvisible: true, isCamo: true },
   SPEEDDEM:  { color: '#FF1744', speed: 3.0, hp: 5,   armor: 0, reward: 25 },
   REGEN:     { color: '#76FF03', speed: 0.77, hp: 25,  armor: 1, reward: 40, isRegen: true },
-  SWARM:     { color: '#FF9800', speed: 1.1, hp: 8,   armor: 0, reward: 12, isSwarm: true, spawns: 'SWARM', spawnCount: 3 },
+  SWARM:     { color: '#FF9800', speed: 1.1, hp: 8,   armor: 0, reward: 12, isSwarm: true, spawns: 'SPEEDDEM', spawnCount: 3 },
   REVERSECHAMELEON: { color: '#FFFFFF', speed: 0.85, hp: 35, armor: 2, reward: 80, isReverseChameleon: true }
 };
 
