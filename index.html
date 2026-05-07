@@ -20,7 +20,7 @@
     .btn-success { background: #4CAF50 !important; margin-bottom: 10px; }
     .btn-info { background: #2196F3 !important; }
 
-    #metaTechUI { margin-top: 25px; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; text-align: left; }
+    #metaTechUI { margin-top: 25px; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; }
     #metaTechUI h3 { margin-top: 0; margin-bottom: 5px; text-align: center; }
     .meta-tokens-text { font-size: 13px; margin-bottom: 10px; text-align: center; }
     .meta-tokens-count { color: #fff; font-weight: bold; font-size: 16px; }
@@ -61,23 +61,14 @@
   <h1 class="text-primary">DESKTOP DEFENDER</h1>
   <h3 class="text-muted">Select a Mission Location</h3>
 
-  <div id="mapMenuButtons" class="menu-btn-group">
+  <div id="mapMenuButtons" class="menu-btn-group" style="align-items: center;">
     <button class="sys-btn menu-btn btn-success" onclick="openSaveModal('menu')">💾 LOAD / SAVE GAME</button>
     <button class="sys-btn menu-btn btn-info" onclick="openEnemyIndex()">📖 ENEMY INDEX</button>
-    <button class="sys-btn menu-btn" onclick="startGame(0)">Map 1: Sandbox (Random Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(1)">Map 2: The S-Curve (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(2)">Map 3: The Spiral (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(3)">Map 4: River Run (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(4)">Map 5: The Maze (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(5)">Map 6: The Labyrinth (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(6)">Map 7: Cross Roads (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(7)">Map 8: Pyramid (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(8)">Map 9: Wide Open (Set Path)</button>
-    <button class="sys-btn menu-btn" onclick="startGame(9)">Map 10: Complex (Set Path)</button>
+    <button class="sys-btn menu-btn" onclick="startGame(0)">🌪️ CHAOS ARENA</button>
     <button class="sys-btn menu-btn" style="background:#FF9800!important;" onclick="showDifficultyScreen()">🎮 ENDLESS MODE</button>
   </div>
 
-  <div id="difficultyMenuButtons" class="menu-btn-group" style="display:none;">
+  <div id="difficultyMenuButtons" class="menu-btn-group" style="display:none; align-items: center;">
     <h3 class="text-muted">Choose Difficulty</h3>
     <button class="sys-btn menu-btn" style="background:#4CAF50!important;" onclick="startEndlessMode('EASY')">EASY - +50% Gold, Slower Waves</button>
     <button class="sys-btn menu-btn" style="background:#2196F3!important;" onclick="startEndlessMode('NORMAL')">NORMAL - Standard Difficulty</button>

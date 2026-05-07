@@ -4,50 +4,7 @@ const bgCanvas = document.createElement('canvas'), bgCtx = bgCanvas.getContext('
 const TILE_SIZE = 40; let COLS = 20, ROWS = 12;
 
 const MAP_DATA = [
-  { name: "Map 1", type: "RANDOM", cols: 20, rows: 12, start: {x:0, y:6}, end: {x:19, y:6}, layout: [] },
-  { name: "Map 2", type: "FIXED", cols: 20, rows: 12, layout: [
-      "00000000000000000000","S1111111110000000000","00000000010000000000","00000000011111111100",
-      "00000000000000000100","00111111111111111100","00100000000000000000","0011111111111111111E",
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000" ] },
-  { name: "Map 3", type: "FIXED", cols: 16, rows: 12, layout: [
-      "S111111111111110","0000000000000010","0111111111110010","0100000000010010","0101111110010010",
-      "0101000010010010","010100E110010010","0101000000010010","0101111111110010","0100000000000010",
-      "0111111111111110","0000000000000000" ] },
-  { name: "Map 4", type: "FIXED", cols: 24, rows: 10, layout: [
-      "S11000000000111000000000","001100000001101100000000","000110000011000110000000","000011000110000011000000",
-      "000001101100000001100000","000000111000000000110000","000000000000000000011000","000000000000000000001100",
-      "00000000000000000000011E","000000000000000000000000" ] },
-  { name: "Map 5", type: "FIXED", cols: 18, rows: 14, layout: [
-      "000000000000000000","000000000000000000","000000000000000000","000000000000000000",
-      "000000000000000000","000000000000000000","S1111111111111111E","000000000000000000",
-      "000000000000000000","000000000000000000","000000000000000000","000000000000000000",
-      "000000000000000000","000000000000000000" ] },
-    { name: "Map 6", type: "FIXED", cols: 20, rows: 16, layout: [
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000",
-      "00000000000000000000","00000000000000000000","00000000000000000000","S111111111111111111E",
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000",
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000" ] },
-    { name: "Map 7", type: "FIXED", cols: 23, rows: 12, layout: [
-      "00000000000000000000000","00000000000000000000000","00000000000000000000000","00000000000000000000000",
-      "00000000000000000000000","S111111111111111111111E","00000000000000000000000","00000000000000000000000",
-      "00000000000000000000000","00000000000000000000000","00000000000000000000000","00000000000000000000000" ] },
-    { name: "Map 8", type: "FIXED", cols: 18, rows: 18, layout: [
-      "000000000000000000","000000000000000000","000000000000000000","000000000000000000",
-      "000000000000000000","000000000000000000","000000000000000000","000000000000000000",
-      "S1111111111111111E","000000000000000000","000000000000000000","000000000000000000",
-      "000000000000000000","000000000000000000","000000000000000000","000000000000000000",
-      "000000000000000000","000000000000000000" ] },
-    { name: "Map 9", type: "FIXED", cols: 24, rows: 14, layout: [
-      "000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000",
-      "000000000000000000000000","000000000000000000000000","S1111111111111111111111E","000000000000000000000000",
-      "000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000",
-      "000000000000000000000000","000000000000000000000000" ] },
-    { name: "Map 10", type: "FIXED", cols: 20, rows: 18, layout: [
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000",
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000",
-      "00000000000000000000","S111111111111111111E","00000000000000000000","00000000000000000000",
-      "00000000000000000000","00000000000000000000","00000000000000000000","00000000000000000000",
-      "00000000000000000000","00000000000000000000" ] }
+  { name: "Chaos Arena", type: "RANDOM", cols: 20, rows: 12, start: {x:0, y:6}, end: {x:19, y:6}, layout: [] }
 ];
 
 let currentMapIndex = 0, startPos = {x:0, y:6}, endPos = {x:19, y:6};
@@ -440,7 +397,7 @@ function updateSelectionUI() {
   }
 
   const t = selectedTower, ty = TOWER_TYPES[t.type];
-  const isF = ty.isFarm, isB = ty.isBuff, isA = ty.isAccel, isR = ty.isRail, isE = ty.isEngie, isI = ty.isIce, isT = ty.isTrapper;
+  const isF = ty.isFarm, isB = ty.isBuff, isA = ty.isAccel, isR = ty.isRail, isE = ty.isEngie, isI = ty.isIce, isT = ty.isTrapper, isTesla = ty.isTesla, isS = ty.isSupport;
 
   const sellVal = Math.floor(t.totalSpent / 2);
   const canAir = (t.type==='SNIPER'||t.upgrades.radar>0) ? 'Yes' : 'No';
@@ -452,20 +409,23 @@ function updateSelectionUI() {
   let h = `<h3 style="border-bottom:2px solid ${t.color};padding-bottom:5px;">${t.type}</h3>${row('Level:', t.level + ` / ${lvlMax}`)}${row('Sell:', `$${sellVal}`, '#ffd700')}<br>`;
 
   if (isF) h += row('Income:', `+$${t.income}/wave`, '#FFD700') + row('Total Gen:', `$${t.totalGenerated}`, '#FFD700') + row('Limit:', `${towers.filter(x=>x.isFarm).length} / 8`);
-  else if (isB) h += row('Aura Radius:', t.range.toFixed(1)) + row('Buffing:', 'All Stats', '#FFD700');
+  else if (isB) h += row('Aura Radius:', t.range.toFixed(1)) + row('Buffing:', 'All Stats', '#FFD700') + row('Buff Intensity:', t.buffIntensity, t.buffIntensity>0?'#FFD700':'white') + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Income: +$${t.income}/wave | No attack</div>`;
   else if (isE) h += row('Constructs:', `${t.constructs.length} / ${t.maxConstructs}`, '#FFC107') + row('C. Dmg:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('C. Rng:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('C. Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Buff Dur:', '5s', '#FFC107') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
-  else if (isI) h += row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Tick Rate:', `${(60/t.reloadTime).toFixed(2)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Slow Lvl:', t.slowLevel, '#29b6f6');
-  else if (isA) h += row('Damage:', `${t.damage.toFixed(1)}/tk`, t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Downtime:', `${(t.reloadTime/60).toFixed(1)}s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Beam Time:', `${((t.baseDuration || t.duration)/60).toFixed(1)}s`, '#FFD700') + row('Targets:', t.upgrades.lasers || 1, (t.upgrades.lasers||1)>1?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
-  else if (isT) h += row('Trap Dmg:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Throw Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Sensors:', rStr) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
+  else if (isI) h += row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Tick Rate:', `${(60/t.reloadTime).toFixed(2)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Freeze Radius:', t.freezeRadius, t.freezeRadius>0?'#FFD700':'white') + row('Slow Lvl:', t.slowLevel, '#29b6f6') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Freezes enemies briefly on hit</div>`;
+  else if (isA) h += row('Damage:', `${t.damage.toFixed(1)}/tk`, t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Downtime:', `${(t.reloadTime/60).toFixed(1)}s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Beam Time:', `${((t.baseDuration || t.duration)/60).toFixed(1)}s`, '#FFD700') + row('Targets:', t.upgrades.lasers || 1, (t.upgrades.lasers||1)>1?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700') + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Charges then devastates with beams</div>`;
+  else if (isTesla) h += row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Fire Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Chain Amt:', t.upgrades.chainAmount || 1, (t.upgrades.chainAmount||1)>1?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700') + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Arcs between multiple targets</div>`;
+  else if (isT) h += row('Trap Dmg:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Throw Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Spike Count:', t.spikeCount, t.spikeCount>0?'#FFD700':'white') + row('Spike Life:', t.spikeLifespan, t.spikeLifespan>0?'#FFD700':'white') + row('Sensors:', rStr) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700') + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Lays traps to catch enemies</div>`;
   else {
     if (isR && !t.hasSpotter) h += `<div style="color:#ff4444; font-weight:bold; text-align:center;">OFFLINE: NEEDS SPOTTER</div>`;
-    h += row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Fire Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
+    if (ty.isSupport) h += row('Aura Radius:', t.range.toFixed(1)) + row('Boost Lvl:', t.healPower, t.healPower>0?'#FFD700':'white') + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Passively boosts all nearby tower stats (speed/dmg/range)</div>`;
+    else if (t.type === 'SNARE') h += row('Damage:', '0 (Stun)', '#white') + row('Mark Dur:', t.markDuration, t.markDuration>0?'#FFD700':'white') + row('Marked:', t.snareMarks.length, '#29b6f6') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Marks and stuns targets</div>`;
+    else h += row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Fire Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
     if (ty.isFlame) h += row('Melt Lvl:', t.meltLevel, '#FF5722');
   }
 
   h += `<div class="upgrades-section" style="margin-top:10px; border-top:1px solid #555; padding-top:10px; display:flex; flex-direction:column; gap:4px;">`;
 
-  if (!isF && !isB && !isI && !isT) {
+  if (!isF && !isB && !isI && !isT && !isTesla) {
       h += `<select onchange="setTargetMode(this.value)" style="background:#222; color:white; padding:4px; border:1px solid #555; margin-bottom:4px;">
               ${['First', 'Last', 'Strongest', 'Weakest', 'Random', 'Closest', 'Farthest', 'Highest Armor'].map(m => `<option value="${m}" ${t.targetMode===m?'selected':''}>Target: ${m}</option>`).join('')}
             </select>`;
@@ -474,20 +434,39 @@ function updateSelectionUI() {
   if (t.level >= lvlMax) {
       h += `<button style="width:100%; opacity:0.5; padding:8px 0; margin-bottom:4px; font-weight:bold;" disabled>MAX LEVEL (${lvlMax})</button>`;
   } else {
-      let rB = (!isF && !isB) ? (t.type==='SNIPER' ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (Native)</button>` : (t.upgrades.radar>0 ? `<button class="radar-btn" style="flex:1;opacity:0.5;">Radar (MAX)</button>` : `<button class="radar-btn" onclick="upgradeTower('radar')" style="flex:1;">Radar $150</button>`)) : '';
+      let rB = (!isF && !isB) ? (t.type==='SNIPER' ? `<button class="radar-btn" style="flex:1;opacity:0.5;" data-desc="Native ability: Detects camouflaged units">Radar (Native)</button>` : (t.upgrades.radar>0 ? `<button class="radar-btn" style="flex:1;opacity:0.5;" data-desc="Unlocked: Detects camo units">Radar (MAX)</button>` : `<button class="radar-btn" onclick="upgradeTower('radar')" style="flex:1;" data-desc="Enable sensor mode to detect camouflaged enemies">Radar $150</button>`)) : '';
 
-      if (isF) h += `<button class="farm-btn" onclick="upgradeTower('farm')" style="margin-bottom:4px;">Upgrade Yield $${FARM_UPGRADE_COSTS[t.level]}</button>`;
-      else if (isB) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Potency $${t.upgrades.speed*30}</button><button onclick="upgradeTower('range')" style="flex:1">Aura Rng $${t.upgrades.range*25}</button></div>`;
-      else if (isE) h += `<button onclick="upgradeTower('amount')" style="margin-bottom:4px;">Add Construct $${t.upgrades.amount*200}</button><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Fire Rate $${t.upgrades.speed*30}</button><button onclick="upgradeTower('damage')" style="flex:1">Damage $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*25}</button>${rB}</div>`;
-      else if (isI) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Tick Rate $${t.upgrades.speed*30}</button><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*25}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;">${rB}<button class="ice-btn" onclick="upgradeTower('slow')" style="flex:1">Slow Pwr $${(t.slowLevel+1)*40}</button></div>`;
+      if (isF) h += `<button class="farm-btn" onclick="upgradeTower('farm')" style="margin-bottom:4px;" data-desc="Increases income by 10 per upgrade level">Upgrade Yield $${FARM_UPGRADE_COSTS[t.level]}</button>`;
+      else if (isB) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('buffIntensity')" style="flex:1" data-desc="Boost all nearby tower stats by 15% per level (speed, dmg, range)">Intensity $${(t.buffIntensity+1)*35}</button></div>`;
+      else if (isE) h += `<button onclick="upgradeTower('amount')" style="margin-bottom:4px;" data-desc="Spawn a new construct satellite (max ${t.maxConstructs})">Add Construct $${t.upgrades.amount*200}</button><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate of constructs: 2% faster per level">Fire Rate $${t.upgrades.speed*30}</button><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Construct damage: Increase by 20% per level">Damage $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1" data-desc="Construct range: Increase by 5% per level">Range $${t.upgrades.range*25}</button>${rB}</div>`;
+      else if (isI) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('freezeRadius')" style="flex:1" data-desc="Expand freeze effect radius by 1000 pixels per level">Freeze Radius $${(t.freezeRadius+1)*30}</button><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire frequency: 2% faster per level">Tick Rate $${t.upgrades.speed*30}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;">${rB}<button class="ice-btn" onclick="upgradeTower('slow')" style="flex:1" data-desc="Strength of freeze effect: Increases duration by 10 ticks per level">Slow Pwr $${(t.slowLevel+1)*40}</button></div>`;
       else if (isA) {
           let laserCost = 1000 * Math.pow(2, (t.upgrades.lasers || 1) - 1);
-          let laserBtn = (t.upgrades.lasers || 1) >= 5 ? `<button class="accel-choice" style="width:100%;opacity:0.5;margin-bottom:4px;" disabled>Targets (MAX)</button>` : `<button class="accel-choice" onclick="upgradeTower('lasers')" style="width:100%;margin-bottom:4px;">Extra Laser $${laserCost}</button>`;
-          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Recharge $${t.upgrades.speed*50}</button><button onclick="upgradeTower('damage')" style="flex:1">Power $${t.upgrades.damage*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*40}</button><button class="accel-choice" onclick="upgradeTower('duration')" style="flex:1">Duration $${t.upgrades.duration*50}</button></div>${laserBtn}<div style="display:flex;gap:4px;margin-bottom:4px;">${rB}</div>`;
+          let laserBtn = (t.upgrades.lasers || 1) >= 5 ? `<button class="accel-choice" style="width:100%;opacity:0.5;margin-bottom:4px;" disabled data-desc="Maximum target limit reached">Targets (MAX)</button>` : `<button class="accel-choice" onclick="upgradeTower('lasers')" style="width:100%;margin-bottom:4px;" data-desc="Add another laser beam target (capacity: 5 max)">Extra Laser $${laserCost}</button>`;
+          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Reduce charging time: 2% faster per level">Recharge $${t.upgrades.speed*50}</button><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam damage output: 25% increase per level">Power $${t.upgrades.damage*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1" data-desc="Beam range: Increase by 5% per level">Range $${t.upgrades.range*40}</button><button class="accel-choice" onclick="upgradeTower('duration')" style="flex:1" data-desc="Beam duration: 10% longer per level">Duration $${t.upgrades.duration*50}</button></div>${laserBtn}<div style="display:flex;gap:4px;margin-bottom:4px;">${rB}</div>`;
+      }
+      else if (isTesla) {
+          let chainCost = (t.upgrades.chainAmount || 1) * 60;
+          let chainBtn = (t.upgrades.chainAmount || 1) >= 5 ? `<button style="width:100%;opacity:0.5;margin-bottom:4px;" disabled data-desc="Maximum chain targets reached (5)">Chain Amt (MAX)</button>` : `<button onclick="upgradeTower('chainAmount')" style="width:100%;margin-bottom:4px;" data-desc="Arc to additional nearby enemies (max 5 targets)">Chain Amount $${chainCost}</button>`;
+          h += `<button onclick="upgradeTower('damage')" style="margin-bottom:4px;width:100%;" data-desc="Base damage: 25% increase per level">Power $${t.upgrades.damage*40}</button><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1" data-desc="Attack range: 5% longer per level">Range $${t.upgrades.range*25}</button>${rB}</div>${chainBtn}`;
+      }
+      else if (isT) {
+          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('spikeCount')" style="flex:1" data-desc="Spawn +1 spike per trigger (spreads attacks)">Spike Cnt $${(t.spikeCount+1)*45}</button><button onclick="upgradeTower('spikeLifespan')" style="flex:1" data-desc="Spikes persist for +30 ticks per level">Lifespan $${(t.spikeLifespan+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('activationArea')" style="flex:1" data-desc="Increase detection radius by +4 pixels per level">Act Area $${(t.activationArea+1)*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Trap damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button>${rB}</div>`;
       }
       else {
-          h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1">Speed $${t.upgrades.speed*30}</button><button onclick="upgradeTower('damage')" style="flex:1">Power $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1">Range $${t.upgrades.range*25}</button>${rB}</div>`;
-          if (ty.isFlame) h += `<button class="flame-choice" onclick="upgradeTower('melt')" style="width:100%;margin-bottom:4px;">Def Melt $${(t.meltLevel+1)*50}</button>`;
+          // Generic towers with tower-specific upgrades
+          if (t.type === 'PISTOL') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('piercing')" style="flex:1" data-desc="Projectiles penetrate +1 enemy per level">Piercing $${(t.piercing+1)*40}</button><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Bullet damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate: 2% faster per level">Fire Rate $${t.upgrades.speed*30}</button>${rB}</div>`;
+          else if (t.type === 'SNIPER') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('armorPen')" style="flex:1" data-desc="Reduce target armor by 0.5 per level">Armor Pen $${(t.armorPen+1)*50}</button><button onclick="upgradeTower('critChance')" style="flex:1" data-desc="5% crit chance per level (2x damage on crit)">Crit $${(t.critChance+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Shot power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Firing range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'MINIGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('spreadReduction')" style="flex:1" data-desc="Reduce accuracy spread (not yet active)">Spread $${(t.spreadReduction+1)*35}</button><button onclick="upgradeTower('ammoCapacity')" style="flex:1" data-desc="Fire rate boost: Up to 50% faster at 10 levels">Ammo $${(t.ammoCapacity+1)*35}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Bullet damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'BOMB') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('bounceCount')" style="flex:1" data-desc="Create +1 bouncing sub-projectiles per level">Bounces $${(t.bounceCount+1)*50}</button><button onclick="upgradeTower('fragmentation')" style="flex:1" data-desc="Spawn +1 shrapnel projectiles per level">Fragmentation $${(t.fragmentation+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Blast power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'FLAME') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('burnDuration')" style="flex:1" data-desc="Extend melt effect by +50 ticks per level">Burn Dur $${(t.burnDuration+1)*40}</button><button onclick="upgradeTower('melt')" style="flex:1" data-desc="Melt damage per tick: +10% per level">Melt Pwr $${(t.meltLevel+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Flame power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'RAILGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('beamWidth')" style="flex:1" data-desc="Increase beam width by +5 pixels per level">Beam Width $${(t.beamWidth+1)*45}</button><button onclick="upgradeTower('piercingPower')" style="flex:1" data-desc="Beam hits +1 additional target per level">Pierce $${(t.piercingPower+1)*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam damage: 25% increase per level">Power $${t.upgrades.damage*40}</button></div>`;
+          else if (t.type === 'SNARE') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('markDuration')" style="flex:1" data-desc="Stun duration: +5 ticks (0.083 sec) per level">Mark Dur $${(t.markDuration+1)*40}</button><button onclick="upgradeTower('markCapacity')" style="flex:1" data-desc="Can mark +1 enemy per level (base: 6)">Capacity $${(t.markCapacity+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate: 2% faster per level">Rate $${t.upgrades.speed*30}</button>${rB}</div>`;
+          else if (t.type === 'MORTAR') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('bounceCount')" style="flex:1" data-desc="Create +1 bouncing sub-projectiles per level">Bounces $${(t.bounceCount+1)*50}</button><button onclick="upgradeTower('fragmentation')" style="flex:1" data-desc="Spawn +1 shrapnel fragments per level">Frags $${(t.fragmentation+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Explosion power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'LASER') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('beamWidth')" style="flex:1" data-desc="Increase beam width by +5 pixels per level">Beam Width $${(t.beamWidth+1)*45}</button><button onclick="upgradeTower('beamDuration')" style="flex:1" data-desc="Extend beam fire time by +3 ticks per level">Beam Dur $${(t.beamDuration+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'SUPPORT') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('healPower')" style="flex:1" data-desc="Boost all nearby tower stats: +3% speed/dmg/range per level">Boost Lvl $${(t.healPower+1)*45}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Aura range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'DECOY') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('decoyHealth')" style="flex:1" data-desc="Decoy max health: +2 per level (base: 5)">Health $${(t.decoyHealth+1)*35}</button><button onclick="upgradeTower('aggroRadius')" style="flex:1" data-desc="Attraction range: +300 pixels per level">Aggro $${(t.aggroRadius+1)*35}</button></div>`;
+          else h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Damage: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
       }
   }
   h += `<button class="remove-btn" onclick="removeTower()" style="width:100%;">SELL $${sellVal}</button></div>`;
@@ -538,14 +517,27 @@ class Enemy {
     this.decoyed = false; // once true, enemy will no longer be attracted to decoys
     this.weakTo = this.isReverseChameleon ? getReverseChameleonWeakTower() : null;
   }
-  takeDamage(dmg, sourceTowerType) {
+  takeDamage(dmg, sourceTowerType, sourceTower=null) {
     if (this.isReverseChameleon && sourceTowerType !== this.weakTo) return 0;
     if (this.isChameleon && this.immuneTimer > 0 && this.immuneTo === sourceTowerType) return 0;
 
     // Don't take damage if already dead (prevents double-spawning)
     if (!this.alive || this.health <= 0) return 0;
 
-    let actualDmg = Math.max(0.5, dmg - Math.max(0, this.armor - (typeof research !== 'undefined' ? research.piercing : 0)));
+    // Calculate critical strike
+    let dmgMultiplier = 1;
+    if (sourceTower && sourceTower.critChance && Math.random() < (sourceTower.critChance * 0.05)) {
+      // 5% crit chance per level, 2x damage on crit
+      dmgMultiplier = 2;
+    }
+
+    // Calculate armor penetration from tower
+    let armorPenReduction = 0;
+    if (sourceTower && sourceTower.armorPen) {
+      armorPenReduction = sourceTower.armorPen * 0.5; // 0.5 armor per level
+    }
+
+    let actualDmg = Math.max(0.5, (dmg * dmgMultiplier) - Math.max(0, this.armor - (typeof research !== 'undefined' ? research.piercing : 0) - armorPenReduction));
     if (this.isShield) actualDmg = Math.ceil(actualDmg * 0.10);
 
     this.health -= actualDmg;
@@ -553,7 +545,11 @@ class Enemy {
 
     // Apply FLAME tower melt effect
     if (sourceTowerType === 'FLAME') {
-      this.meltTicks = 300;
+      let baseDuration = 300;
+      if (sourceTower && sourceTower.burnDuration) {
+        baseDuration += sourceTower.burnDuration * 50; // +50 ticks per level
+      }
+      this.meltTicks = baseDuration;
     }
 
     // THE FIX: Trigger death instantly the moment health hits 0, instead of waiting for update()
@@ -636,6 +632,10 @@ class Enemy {
       if (distSq < 25) { // Very close to decoy: touch event
         // Mark as decoyed so it can't be lured again
         this.decoyed = true;
+        // Damage the decoy tower
+        if (this.decoyTarget && this.decoyTarget.isDecoy) {
+          this.decoyTarget.health -= 1;
+        }
         this.decoyTarget = null;
         this.decoyIgnoreTicks = 999999;
         this.decoyTicks = 0;
@@ -714,14 +714,32 @@ class Enemy {
 
 class Trap {
   constructor(x, y, damage, tower) {
-      this.x = x; this.y = y; this.damage = damage; this.tower = tower; this.alive = true; this.radius = 12;
+      this.x = x; this.y = y; this.damage = damage; this.tower = tower; this.alive = true;
+      // Base radius is 12, scaled by activation area if available
+      let baseRadius = 12;
+      if (tower && tower.activationArea) {
+        baseRadius += tower.activationArea * 4; // +4 pixels per level
+      }
+      this.radius = baseRadius;
+      // Lifespan tracking (0 means infinite, like before)
+      this.lifespan = tower && tower.spikeLifespan ? 300 + tower.spikeLifespan * 30 : 0;
+      this.age = 0;
   }
   update() {
+      // Check lifespan
+      if (this.lifespan > 0) {
+        this.age++;
+        if (this.age >= this.lifespan) {
+          this.alive = false;
+          return;
+        }
+      }
+      
       for(let i=0; i<enemies.length; i++) {
           let e = enemies[i];
           if (e.isFlying) continue;
           if ((e.x-this.x)**2 + (e.y-this.y)**2 < this.radius*this.radius) {
-              this.tower.damageDealt += e.takeDamage(this.damage, 'TRAPPER');
+              this.tower.damageDealt += e.takeDamage(this.damage, 'TRAPPER', this.tower);
               spawnParticles(this.x, this.y, '#FFF', 12, 2.0);
               this.alive = false; break;
           }
@@ -747,7 +765,15 @@ class Tower {
     this.baseRange = TOWER_TYPES[typeKey].range; this.baseReload = TOWER_TYPES[typeKey].reload; this.baseDamage = TOWER_TYPES[typeKey].damage; this.baseDuration = TOWER_TYPES[typeKey].duration || 0;
     this.range = this.baseRange; this.reloadTime = this.baseReload; this.damage = this.baseDamage; this.duration = this.baseDuration;
     this.color = TOWER_TYPES[typeKey].color; this.level = 1; this.timer = 0; this.targetMode = 'First';
-    this.upgrades = { speed: 1, damage: 1, range: 1, duration: 1, radar: 0, amount: 1, lasers: 1 }; this.meltLevel = 0; this.slowLevel = 0; this.damageDealt = 0;
+    this.upgrades = { speed: 1, damage: 1, range: 1, duration: 1, radar: 0, amount: 1, lasers: 1 }; 
+    if (TOWER_TYPES[typeKey].isTesla) this.upgrades.chainAmount = 1;
+    // Specialized upgrades
+    this.buffIntensity = 0; this.freezeRadius = 0; this.markDuration = 0; this.markCapacity = 0; this.healPower = 0;
+    this.piercing = 0; this.armorPen = 0; this.critChance = 0; this.spreadReduction = 0; this.ammoCapacity = 0;
+    this.burnDuration = 0; this.beamWidth = 0; this.piercingPower = 0; this.spikeCount = 0; this.spikeLifespan = 0;
+    this.activationArea = 0; this.decoyHealth = 0; this.aggroRadius = 0; this.bounceCount = 0; this.fragmentation = 0;
+    this.beamDuration = 0;
+    this.meltLevel = 0; this.slowLevel = 0; this.damageDealt = 0;
     this.fireTimer = 0; this.rechargeTimer = 0; this.currentTargets = [];
     this.isRail = !!TOWER_TYPES[typeKey].isRail; this.isFarm = !!TOWER_TYPES[typeKey].isFarm; this.isEngie = !!TOWER_TYPES[typeKey].isEngie; this.isTrapper = !!TOWER_TYPES[typeKey].isTrapper; this.hasSpotter = false;
     this.isSnare = !!TOWER_TYPES[typeKey].isSnare; this.isLaser = !!TOWER_TYPES[typeKey].isLaser; this.isSupport = !!TOWER_TYPES[typeKey].isSupport; this.isDecoy = !!TOWER_TYPES[typeKey].isDecoy; this.isMortar = !!TOWER_TYPES[typeKey].isMortar; this.isTesla = !!TOWER_TYPES[typeKey].isTesla;
@@ -757,6 +783,11 @@ class Tower {
     this.laserBeamTimer = 0; this.laserBeamEndX = 0; this.laserBeamEndY = 0;
     this.teslaArcs = [];
     this.maxConstructs = TOWER_TYPES[typeKey].maxConstructs || 0; this.constructs = []; this.orbitAngle = 0;
+    // DECOY tower health
+    if (this.isDecoy) {
+      this.maxHealth = 5 + this.decoyHealth * 2;
+      this.health = this.maxHealth;
+    }
     this.snareMarks = [];
     this.engieBuffTimer = 0;
   }
@@ -769,10 +800,18 @@ class Tower {
     // TOWER SYNERGIES
     let snareNearby = allTowers.filter(t => t.type === 'SNARE' && (t.x-this.x)**2 + (t.y-this.y)**2 <= 200*200).length > 0;
     let laserNearby = allTowers.filter(t => t.type === 'LASER' && (t.x-this.x)**2 + (t.y-this.y)**2 <= 200*200).length > 0;
-    let supportNearby = allTowers.filter(t => t.type === 'SUPPORT' && (t.x-this.x)**2 + (t.y-this.y)**2 <= t.range*t.range).length > 0;
+    let supportTower = allTowers.find(t => t.type === 'SUPPORT' && (t.x-this.x)**2 + (t.y-this.y)**2 <= t.range*t.range);
+    
     if (snareNearby && !this.isSnare) dmgMod *= 1.15; // +15% damage near SNARE
     if (laserNearby && !this.isLaser) speedMod *= 0.90; // 10% faster fire rate near LASER
-    if (supportNearby && !this.isSupport) { speedMod *= 0.88; dmgMod *= 1.08; rangeMod *= 1.12; }
+    if (supportTower && !this.isSupport) {
+      // SUPPORT tower boosts nearby towers: base 8% speed, 8% damage, 12% range
+      // healPower increases the full 3% per level
+      let supportBoost = 1 + (0.03 * supportTower.healPower);
+      speedMod *= 0.88 + (0.03 * supportTower.healPower); // -12% base, +3% per healPower
+      dmgMod *= 1.08 + (0.03 * supportTower.healPower);   // +8% base, +3% per healPower
+      rangeMod *= 1.12 + (0.03 * supportTower.healPower); // +12% base, +3% per healPower
+    }
 
     allTowers.forEach(t => {
       if (TOWER_TYPES[t.type].isBuff) {
@@ -785,9 +824,10 @@ class Tower {
 
         if (distSq <= t.range*t.range) {
             if (!hasAppliedStatsBuff) {
-                speedMod *= Math.max(0.4, 0.95 - (t.upgrades.speed  * 0.02));
-                dmgMod   *= 1.05 + (t.upgrades.speed * 0.1);
-                rangeMod *= 1.10 + (t.upgrades.range * 0.05);
+                let intensityMult = 1 + (t.buffIntensity * 0.15); // +15% per buff intensity level
+                speedMod *= Math.max(0.4, 0.95 - (t.upgrades.speed  * 0.02)) * intensityMult;
+                dmgMod   *= (1.05 + (t.upgrades.speed * 0.1)) * intensityMult;
+                rangeMod *= (1.10 + (t.upgrades.range * 0.05)) * intensityMult;
                 hasAppliedStatsBuff = true;
             }
         }
@@ -797,56 +837,74 @@ class Tower {
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
     this.reloadTime *= speedMod; this.damage *= dmgMod; this.range *= rangeMod;
   }
+
+  getEffectiveReloadTime() {
+    // Reduce reload time based on ammoCapacity upgrade
+    let reloadTime = this.reloadTime;
+    if (this.ammoCapacity && this.ammoCapacity > 0) {
+      reloadTime *= Math.max(0.3, 1 - (this.ammoCapacity * 0.05)); // Up to 50% faster at 10 levels
+    }
+    return reloadTime;
+  }
   update() {
     if (this.engieBuffTimer > 0) this.engieBuffTimer--;
     if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
     if (this.isRail && !this.hasSpotter) return;
 
-    const r2 = this.range * this.range;
+    let effectiveRange = this.range;
+    if (TOWER_TYPES[this.type].isDecoy) {
+      effectiveRange += this.aggroRadius * 300;
+    }
+    const r2 = effectiveRange * effectiveRange;
     const distSq = (a) => (a.x-this.x)**2 + (a.y-this.y)**2;
 
     if (this.isTrapper) {
       this.timer++;
       if (this.timer >= this.reloadTime) {
-        let spotX = this.x, spotY = this.y;
-        let isFixed = MAP_DATA[currentMapIndex].type === "FIXED";
-
-        if (isFixed) {
-          let possible = [];
-          let layout = MAP_DATA[currentMapIndex].layout;
-          for(let r=0; r<ROWS; r++) {
-            for(let c=0; c<COLS; c++) {
-              if (layout[r] && layout[r][c] && (layout[r][c] === '1' || layout[r][c] === 'S' || layout[r][c] === 'E')) {
-                let px = c * TILE_SIZE + TILE_SIZE / 2;
-                let py = r * TILE_SIZE + TILE_SIZE / 2;
-                if ((px - this.x)**2 + (py - this.y)**2 <= r2) {
-                  possible.push({x: px, y: py});
-                }
-              }
-            }
-          }
-          if (possible.length > 0) {
-            let pick = possible[Math.floor(Math.random() * possible.length)];
-            spotX = pick.x + (Math.random() * 20 - 10);
-            spotY = pick.y + (Math.random() * 20 - 10);
-          } else {
-            isFixed = false;
-          }
-        }
-
-        if (!isFixed) {
-          let angle = Math.random() * Math.PI * 2;
-          let rDist = Math.random() * this.range;
-          spotX = this.x + Math.cos(angle) * rDist;
-          spotY = this.y + Math.sin(angle) * rDist;
-        }
-
         let myTraps = traps.filter(t => t.tower === this);
         if (myTraps.length >= 10 + this.level) {
           myTraps[0].alive = false;
         }
 
-        traps.push(new Trap(spotX, spotY, this.damage, this));
+        // Spawn multiple traps based on spikeCount
+        const spikesToSpawn = 1 + this.spikeCount;
+        for (let s = 0; s < spikesToSpawn; s++) {
+          let spotX = this.x, spotY = this.y;
+          let isFixed = MAP_DATA[currentMapIndex].type === "FIXED";
+
+          if (isFixed) {
+            let possible = [];
+            let layout = MAP_DATA[currentMapIndex].layout;
+            for(let r=0; r<ROWS; r++) {
+              for(let c=0; c<COLS; c++) {
+                if (layout[r] && layout[r][c] && (layout[r][c] === '1' || layout[r][c] === 'S' || layout[r][c] === 'E')) {
+                  let px = c * TILE_SIZE + TILE_SIZE / 2;
+                  let py = r * TILE_SIZE + TILE_SIZE / 2;
+                  if ((px - this.x)**2 + (py - this.y)**2 <= r2) {
+                    possible.push({x: px, y: py});
+                  }
+                }
+              }
+            }
+            if (possible.length > 0) {
+              let pick = possible[Math.floor(Math.random() * possible.length)];
+              spotX = pick.x + (Math.random() * 20 - 10);
+              spotY = pick.y + (Math.random() * 20 - 10);
+            } else {
+              isFixed = false;
+            }
+          }
+
+          if (!isFixed) {
+            let angle = Math.random() * Math.PI * 2;
+            let rDist = Math.random() * this.range;
+            spotX = this.x + Math.cos(angle) * rDist;
+            spotY = this.y + Math.sin(angle) * rDist;
+          }
+          
+          traps.push(new Trap(spotX, spotY, this.damage, this));
+        }
+        
         playSFX('shoot');
         this.timer = 0;
       }
@@ -855,8 +913,9 @@ class Tower {
 
     if (TOWER_TYPES[this.type].isIce) {
       this.timer++;
-      if (this.timer >= this.reloadTime) {
-        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= r2; });
+      if (this.timer >= this.getEffectiveReloadTime()) {
+        let effectiveRange = r2 + (this.freezeRadius * 1000); // +1000 sq per level
+        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= effectiveRange; });
         if (inRange.length > 0) {
           playSFX('hit'); spawnParticles(this.x, this.y, '#b3e5fc', 30, 2.5);
           inRange.forEach(e => { e.slowTicks = 120 + this.slowLevel * 30; e.slowFactor = Math.max(0.1, 0.5 - this.slowLevel * 0.05); });
@@ -913,7 +972,7 @@ class Tower {
 
           if (this.fireTimer % 15 === 0) {
               this.currentTargets.forEach(target => {
-                  this.damageDealt += target.takeDamage(this.damage, this.type);
+                  this.damageDealt += target.takeDamage(this.damage, this.type, this);
                   spawnParticles(target.x, target.y, '#E040FB', 8, 2);
               });
               playSFX('hit');
@@ -926,7 +985,11 @@ class Tower {
         return;
       }
       if (inRange.length > 0) {
-          this.fireTimer = this.duration;
+          let fireDuration = this.duration;
+          if (this.beamDuration && this.beamDuration > 0) {
+            fireDuration += this.beamDuration * 3; // +3 ticks per level
+          }
+          this.fireTimer = fireDuration;
           this.currentTargets = inRange.slice(0, this.upgrades.lasers || 1);
           playSFX('sniper');
       }
@@ -936,12 +999,14 @@ class Tower {
     // NEW TOWERS
     if (TOWER_TYPES[this.type].isSnare) {
       this.timer++;
-      if (this.timer >= this.reloadTime) {
+      if (this.timer >= this.getEffectiveReloadTime()) {
         let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= r2; });
         if (inRange.length > 0) {
           playSFX('hit'); spawnParticles(this.x, this.y, '#9C27B0', 12, 1.2);
-          this.snareMarks = inRange.slice(0, 6).map(e => ({ x: e.x, y: e.y, life: 20 }));
-          inRange.forEach(e => { e.slowTicks = 6; e.slowFactor = 0.001; }); // Freeze for about 0.1s
+          const markCap = 6 + this.markCapacity; // Starts at 6, increases with upgrade
+          const markLife = 20 + (this.markDuration * 5); // Base 20 ticks, +5 per upgrade level
+          this.snareMarks = inRange.slice(0, markCap).map(e => ({ x: e.x, y: e.y, life: markLife }));
+          inRange.forEach(e => { e.slowTicks = markLife; e.slowFactor = 0.001; }); // Freeze duration matches mark duration
           this.timer = 0;
         }
       }
@@ -950,7 +1015,7 @@ class Tower {
 
     if (TOWER_TYPES[this.type].isLaser) {
       this.timer++;
-      if (this.timer >= this.reloadTime) {
+      if (this.timer >= this.getEffectiveReloadTime()) {
         let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= r2; });
         if (inRange.length > 0) {
           playSFX('beam');
@@ -960,7 +1025,7 @@ class Tower {
           this.laserBeamEndY = aim ? aim.y : this.y;
           this.laserBeamTimer = 8;
           targets.forEach(e => {
-            this.damageDealt += e.takeDamage(this.damage, this.type);
+            this.damageDealt += e.takeDamage(this.damage, this.type, this);
             spawnParticles(e.x, e.y, '#00FF00', 5);
           });
           this.timer = 0;
@@ -982,7 +1047,7 @@ class Tower {
           let used = new Set();
           let chainOrigin = { x: this.x, y: this.y };
           let lastTarget = null;
-          for (let bounce = 0; bounce < 4; bounce++) {
+          for (let bounce = 0; bounce < this.upgrades.chainAmount; bounce++) {
             const candidates = inRange.filter(e => !used.has(e) && (!lastTarget || Math.hypot(e.x - chainOrigin.x, e.y - chainOrigin.y) <= 160));
             if (candidates.length === 0) break;
             candidates.sort((a, b) => Math.hypot(a.x - chainOrigin.x, a.y - chainOrigin.y) - Math.hypot(b.x - chainOrigin.x, b.y - chainOrigin.y));
@@ -1006,14 +1071,10 @@ class Tower {
     }
 
     if (TOWER_TYPES[this.type].isSupport) {
+      // SUPPORT tower passively boosts all nearby towers
+      // visuals: pulsing aura to show it's active
       this.timer++;
       if (this.timer >= 60) {
-        towers.forEach(t => {
-          if (t === this || t.isFarm || t.type === 'BUFF' || t.type === 'SUPPORT') return;
-          if ((t.x - this.x) ** 2 + (t.y - this.y) ** 2 <= r2) {
-            t.engieBuffTimer = Math.max(t.engieBuffTimer || 0, 90);
-          }
-        });
         spawnParticles(this.x, this.y, '#2196F3', 10, 1.6);
         this.timer = 0;
       }
@@ -1035,7 +1096,7 @@ class Tower {
     }
 
     this.timer++;
-    if (this.timer >= this.reloadTime) {
+    if (this.timer >= this.getEffectiveReloadTime()) {
       let inRange = enemies.filter(e => {
         const hr = this.type === 'SNIPER' || this.upgrades.radar > 0;
         if ((e.isCamo || e.isFlying) && !hr) return false;
@@ -1053,7 +1114,14 @@ class Tower {
             this.beamEndY = this.y + Math.sin(angle) * this.range;
             this.railFireTimer = 15;
 
+            // Calculate beam width (base 35 pixels, +5 per beamWidth level)
+            const beamWidth = 35 + (this.beamWidth ? this.beamWidth * 5 : 0);
+            const maxPiercing = this.piercingPower ? this.piercingPower + 1 : 1; // How many enemies can be hit
+            let targetsHit = 0;
+
             enemies.forEach(e => {
+                if (targetsHit >= maxPiercing) return; // Stop if hit limit reached
+                
                 const dx = e.x - this.x;
                 const dy = e.y - this.y;
                 const beamDx = this.beamEndX - this.x;
@@ -1068,9 +1136,10 @@ class Tower {
                     const closestY = this.y + proj * beamDy;
                     const distToBeamSq = (e.x - closestX)**2 + (e.y - closestY)**2;
 
-                    if (distToBeamSq <= 35*35) {
-                        this.damageDealt += e.takeDamage(this.damage, this.type);
+                    if (distToBeamSq <= beamWidth * beamWidth) {
+                        this.damageDealt += e.takeDamage(this.damage, this.type, this);
                         spawnParticles(e.x, e.y, '#00FFFF', 8);
+                        targetsHit++;
                     }
                 }
             });
@@ -1150,7 +1219,6 @@ class Tower {
       this.snareMarks = this.snareMarks.filter(mark => mark.life > 0);
       this.snareMarks.forEach(mark => {
         mark.life--;
-        if (!gameSettings.flashing) return;
         const alpha = Math.max(0, mark.life / 20);
         ctx.save();
         ctx.globalAlpha = alpha;
@@ -1193,6 +1261,7 @@ class Projectile {
     this.damage = damage; this.speed = speed; this.type = type;
     this.splash = splash; this.active = true; this.alive = true; this.sourceTower = src;
     this.splitDepth = splitDepth;
+    this.hitEnemies = new Set(); // Track enemies hit for piercing
   }
   update() {
   if (!this.active) return;
@@ -1224,7 +1293,7 @@ class Projectile {
 
     // Damage direct target if they're still alive
     if (this.target && this.target.alive) {
-      if (this.sourceTower) this.sourceTower.damageDealt += this.target.takeDamage(this.damage, sourceType);
+      if (this.sourceTower) this.sourceTower.damageDealt += this.target.takeDamage(this.damage, sourceType, this.sourceTower);
     }
 
     // Splash damage always explodes at the coordinates
@@ -1232,34 +1301,66 @@ class Projectile {
       spawnParticles(this.tx, this.ty, '#ff9800', 15);
       enemies.forEach(e => {
         if (e.alive && Math.hypot(e.x - this.tx, e.y - this.ty) <= this.splash * TILE_SIZE) {
-          if (this.sourceTower) this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, sourceType);
+          if (this.sourceTower) this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, sourceType, this.sourceTower);
         }
       });
+      
+      // Create fragment projectiles based on fragmentation upgrade
+      if (this.sourceTower && this.sourceTower.fragmentation && this.sourceTower.fragmentation > 0) {
+        const fragmentCount = this.sourceTower.fragmentation; // 1 fragment per level
+        for (let i = 0; i < fragmentCount; i++) {
+          // Spawn fragments in random directions
+          const randomEnemy = enemies.filter(e => e.alive && Math.hypot(e.x - this.tx, e.y - this.ty) <= this.splash * TILE_SIZE * 2)[Math.floor(Math.random() * enemies.length)];
+          if (randomEnemy) {
+            const frag = new Projectile(this.tx, this.ty, randomEnemy, this.damage * 0.25, 5, this.type, 0, this.sourceTower, (this.splitDepth || 0) + 1);
+            frag.grace = 5; // Grace period before checking hits
+            projectiles.push(frag);
+          }
+        }
+      }
+      
+      // Create bounce projectiles based on bounceCount upgrade
+      if (this.sourceTower && this.sourceTower.bounceCount && this.sourceTower.bounceCount > 0) {
+        const bounceTargets = enemies.filter(e => e.alive && Math.hypot(e.x - this.tx, e.y - this.ty) > this.splash * TILE_SIZE && Math.hypot(e.x - this.tx, e.y - this.ty) <= this.splash * TILE_SIZE * 3); // Enemies just outside splash
+        for (let i = 0; i < Math.min(this.sourceTower.bounceCount, bounceTargets.length); i++) {
+          const bounce = new Projectile(this.tx, this.ty, bounceTargets[i], this.damage * 0.6, 5, this.type, this.splash * 0.5, this.sourceTower, (this.splitDepth || 0) + 1);
+          bounce.grace = 3;
+          projectiles.push(bounce);
+        }
+      }
     } else {
       spawnParticles(this.tx, this.ty, '#fff', 5);
     }
   } else {
     // Check for collision with ANY enemy while traveling
+    const pierceLevel = this.sourceTower && this.sourceTower.piercing ? this.sourceTower.piercing : 0;
+    const maxPierce = pierceLevel > 0 ? 1 + pierceLevel : 1; // Can hit 1 + piercing enemies
+    
     for (let enemy of enemies) {
-      if (enemy.alive && Math.hypot(enemy.x - this.x, enemy.y - this.y) <= 12) {
-        this.active = false;
-        this.alive = false;
+      if (enemy.alive && Math.hypot(enemy.x - this.x, enemy.y - this.y) <= 12 && !this.hitEnemies.has(enemy)) {
+        this.hitEnemies.add(enemy);
         const sourceType = this.sourceTower ? this.sourceTower.type : null;
         // Apply damage normally
-        if (this.sourceTower) this.sourceTower.damageDealt += enemy.takeDamage(this.damage, sourceType);
+        if (this.sourceTower) this.sourceTower.damageDealt += enemy.takeDamage(this.damage, sourceType, this.sourceTower);
 
         // Splash damage if applicable
         if (this.splash > 0) {
           spawnParticles(enemy.x, enemy.y, '#ff9800', 15);
           enemies.forEach(e => {
             if (e.alive && Math.hypot(e.x - enemy.x, e.y - enemy.y) <= this.splash * TILE_SIZE) {
-              if (this.sourceTower) this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, sourceType);
+              if (this.sourceTower) this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, sourceType, this.sourceTower);
             }
           });
         } else {
           spawnParticles(enemy.x, enemy.y, '#fff', 5);
         }
-        return;
+        
+        // Stop if piercing limit reached
+        if (this.hitEnemies.size >= maxPierce) {
+          this.active = false;
+          this.alive = false;
+          return;
+        }
       }
     }
 
@@ -1270,36 +1371,43 @@ class Projectile {
 
 
   draw() {
-    // Determine colors and sizes
-    let color = this.type === 'SNIPER' ? '#000' : (this.splash > 0 ? '#ff9800' : '#ffeb3b');
-    let size = (this.splash > 0 ? 6 : 4);
-
-    // Draw glow for fragments
-    if (isFragment && gameSettings.flashing) {
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = '#B388FF';
-      ctx.shadowColor = '#B388FF';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, size + 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+    // Determine colors based on tower type
+    let color = '#ffeb3b'; // default yellow
+    let size = 4;
+    
+    // Get the tower type's bullet color
+    if (this.type && TOWER_TYPES[this.type]) {
+      let bulletColor = TOWER_TYPES[this.type].bullet;
+      if (bulletColor) {
+        // Map color names to hex values
+        const colorMap = {
+          'orange': '#FF9800',
+          'white': '#FFFFFF',
+          'yellow': '#ffeb3b',
+          'red': '#FF5722',
+          'black': '#000000',
+          'gold': '#FFD700',
+          '#FFC107': '#FFC107',
+          '#00FFFF': '#00FFFF',
+          'none': 'transparent'
+        };
+        color = colorMap[bulletColor] || bulletColor;
+      }
+    }
+    
+    // Increase size for splash weapons
+    if (this.splash > 0) {
+      size = 6;
     }
 
     // Draw the projectile
-    ctx.fillStyle = color;
-    ctx.shadowColor = isFragment ? '#B388FF' : 'transparent';
-    ctx.shadowBlur = isFragment ? 8 : 0;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Add bright outline for fragments
-    if (isFragment) {
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+    if (color !== 'transparent') {
+      ctx.fillStyle = color;
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 }
@@ -1403,12 +1511,39 @@ window.upgradeTower = (stat) => {
         case 'radar': cost = 150; break;
         case 'melt': cost = (t.meltLevel + 1) * 50; break;
         case 'slow': cost = (t.slowLevel + 1) * 40; break;
+        case 'chainAmount': cost = (t.upgrades.chainAmount || 1) * 60; break;
         case 'farm': cost = FARM_UPGRADE_COSTS[t.level]; break;
+        // Specialized upgrades
+        case 'buffIntensity': cost = (t.buffIntensity + 1) * 35; break;
+        case 'freezeRadius': cost = (t.freezeRadius + 1) * 30; break;
+        case 'markDuration': cost = (t.markDuration + 1) * 40; break;
+        case 'markCapacity': cost = (t.markCapacity + 1) * 45; break;
+        case 'healPower': cost = (t.healPower + 1) * 45; break;
+        case 'piercing': cost = (t.piercing + 1) * 40; break;
+        case 'armorPen': cost = (t.armorPen + 1) * 50; break;
+        case 'critChance': cost = (t.critChance + 1) * 50; break;
+        case 'spreadReduction': cost = (t.spreadReduction + 1) * 35; break;
+        case 'ammoCapacity': cost = (t.ammoCapacity + 1) * 35; break;
+        case 'burnDuration': cost = (t.burnDuration + 1) * 40; break;
+        case 'beamWidth': cost = (t.beamWidth + 1) * 45; break;
+        case 'piercingPower': cost = (t.piercingPower + 1) * 60; break;
+        case 'spikeCount': cost = (t.spikeCount + 1) * 45; break;
+        case 'spikeLifespan': cost = (t.spikeLifespan + 1) * 45; break;
+        case 'activationArea': cost = (t.activationArea + 1) * 40; break;
+        case 'decoyHealth': cost = (t.decoyHealth + 1) * 35; break;
+        case 'aggroRadius': cost = (t.aggroRadius + 1) * 35; break;
+        case 'bounceCount': cost = (t.bounceCount + 1) * 50; break;
+        case 'fragmentation': cost = (t.fragmentation + 1) * 50; break;
+        case 'beamDuration': cost = (t.beamDuration + 1) * 45; break;
     }
 
     // Special failsafes for one-off/capped upgrades
     if (stat === 'radar' && (t.upgrades.radar >= 1 || t.type === 'SNIPER')) return;
     if (stat === 'lasers' && (t.upgrades.lasers || 1) >= 5) return;
+    if (stat === 'chainAmount' && (t.upgrades.chainAmount || 1) >= 5) return;
+    // Cap specialized upgrades at 20
+    const specUpgrades = ['buffIntensity', 'freezeRadius', 'markDuration', 'markCapacity', 'healPower', 'piercing', 'armorPen', 'critChance', 'spreadReduction', 'ammoCapacity', 'burnDuration', 'beamWidth', 'piercingPower', 'spikeCount', 'spikeLifespan', 'activationArea', 'decoyHealth', 'aggroRadius', 'bounceCount', 'fragmentation', 'beamDuration'];
+    if (specUpgrades.includes(stat) && t[stat] >= 20) return;
 
     // 2. Execute transaction and apply math
     if (gold >= cost) {
@@ -1453,6 +1588,30 @@ window.upgradeTower = (stat) => {
                 // Uses t.level before the global ++ occurs, making the indexing perfectly match your old t.level-1 logic
                 t.income = Math.floor(FARM_INCOME_LEVELS[t.level] * (1 + metaTech.farmInc * 0.1));
                 break;
+            case 'chainAmount':
+                t.upgrades.chainAmount = (t.upgrades.chainAmount || 1) + 1;
+                break;
+            case 'buffIntensity': t.buffIntensity++; break;
+            case 'freezeRadius': t.freezeRadius++; break;
+            case 'markDuration': t.markDuration++; break;
+            case 'markCapacity': t.markCapacity++; break;
+            case 'healPower': t.healPower++; break;
+            case 'piercing': t.piercing++; break;
+            case 'armorPen': t.armorPen++; break;
+            case 'critChance': t.critChance++; break;
+            case 'spreadReduction': t.spreadReduction++; break;
+            case 'ammoCapacity': t.ammoCapacity++; break;
+            case 'burnDuration': t.burnDuration++; break;
+            case 'beamWidth': t.beamWidth++; break;
+            case 'piercingPower': t.piercingPower++; break;
+            case 'spikeCount': t.spikeCount++; break;
+            case 'spikeLifespan': t.spikeLifespan++; break;
+            case 'activationArea': t.activationArea++; break;
+            case 'decoyHealth': t.decoyHealth++; t.maxHealth = 5 + t.decoyHealth * 2; t.health = t.maxHealth; break;
+            case 'aggroRadius': t.aggroRadius++; break;
+            case 'bounceCount': t.bounceCount++; break;
+            case 'fragmentation': t.fragmentation++; break;
+            case 'beamDuration': t.beamDuration++; break;
         }
 
         // 3. Apply global logic
@@ -1609,6 +1768,15 @@ function tick() {
 
   towers.forEach(t => t.applyBuffs(towers));
   towers.forEach(t => t.update());
+
+  // Remove dead DECOY towers
+  towers = towers.filter(t => {
+    if (t.isDecoy && t.health <= 0) {
+      if (selectedTower === t) { selectedTower = null; updateSelectionUI(); }
+      return false;
+    }
+    return true;
+  });
 
   enemies = enemies.filter(e => {
       e.update();
