@@ -4,7 +4,68 @@ const bgCanvas = document.createElement('canvas'), bgCtx = bgCanvas.getContext('
 const TILE_SIZE = 40; let COLS = 20, ROWS = 12;
 
 const MAP_DATA = [
-  { name: "Chaos Arena", type: "RANDOM", cols: 20, rows: 12, start: {x:0, y:6}, end: {x:19, y:6}, layout: [] }
+  { name: "Chaos Arena", type: "RANDOM", cols: 20, rows: 12, start: {x:0, y:6}, end: {x:19, y:6}, layout: [] },
+  {
+    name: "Pointless Journey",
+    type: "FIXED",
+    cols: 20,
+    rows: 12,
+    layout: [
+      "11111111111111111111",
+      "10000000000000000001",
+      "10000000000000000001",
+      "10000000000000000001",
+      "10000000000000000001",
+      "10000000000000000001",
+      "10000000000000000001",
+      "10000000000000000001",
+      "10000000000000000001",
+      "E0000000000000000001",
+      "00000000000000000001",
+      "S1111111111111111111"
+    ]
+  },
+  {
+    name: "Double Trouble",
+    type: "FIXED",
+    cols: 20,
+    rows: 12,
+    layout: [
+      "00000000000000000000",
+      "00000000000000000000",
+      "00000000000000000000",
+      "00001111111111111000",
+      "00011000000000001100",
+      "00110000000000000110",
+      "S110000000000000001E",
+      "00110000000000000110",
+      "00011000000000001100",
+      "00001111111111111000",
+      "00000000000000000000",
+      "00000000000000000000"
+    ]
+  },
+  {
+    name: "Stranded",
+    type: "FIXED",
+    cols: 24,
+    rows: 13,
+    layout: [
+      "XXXXXXXXXXXXXXXXXXX1111X",
+      "XXXXXXXXXXXXXXXXXXX1001X",
+      "XXXXX111111XXXXXXXX1001X",
+      "XXXXX1000011XXXX11110011",
+      "XXXXX10000011XX110000001",
+      "XXX11100000011110000000E",
+      "S11100000000000000000001",
+      "XXX100111100000000000001",
+      "XXX1001XX110000000000111",
+      "XXX1111XXX110000111111XX",
+      "XXXXXXXXXXX111111XXXXXXX",
+      "XXXXXXXXXXXXXXXXXXXXXXXX",
+      "XXXXXXXXXXXXXXXXXXXXXXXX"
+    ]
+  }
 ];
 
 let currentMapIndex = 0, startPos = {x:0, y:6}, endPos = {x:19, y:6};
@@ -28,7 +89,15 @@ function loadMeta() {
     updateMetaUI();
 }
 
-function saveMeta() { localStorage.setItem('dd_meta', JSON.stringify(metaTech)); updateMetaUI(); }
+function saveMeta() {
+  if (adminProgressWritesBlocked()) {
+    updateMetaUI();
+    logAdmin('Meta write blocked in admin mode');
+    return;
+  }
+  localStorage.setItem('dd_meta', JSON.stringify(metaTech));
+  updateMetaUI();
+}
 window.buyMeta = (type) => {
     let cost = (metaTech[type] + 1) * 5;
     if (metaTech.tokens >= cost && metaTech[type] < 10) { metaTech.tokens -= cost; metaTech[type]++; saveMeta(); }
@@ -55,6 +124,10 @@ function loadAchievements() {
 }
 
 function saveAchievements() {
+  if (adminProgressWritesBlocked()) {
+    logAdmin('Achievement write blocked in admin mode');
+    return;
+  }
   localStorage.setItem('dd_achievements', JSON.stringify(achievements));
   localStorage.setItem('dd_leaderboard', JSON.stringify(leaderboard));
   localStorage.setItem('dd_daily_state', JSON.stringify(dailyChallengeState));
@@ -150,11 +223,22 @@ function getTowerCost(type) { return Math.max(10, Math.floor(TOWER_TYPES[type].b
 function drawBgCache() {
     bgCanvas.width = canvas.width; bgCanvas.height = canvas.height;
     bgCtx.clearRect(0, 0, canvas.width, canvas.height);
-    bgCtx.strokeStyle = '#333'; for(let x=0; x<COLS; x++) for(let y=0; y<ROWS; y++) bgCtx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    if (MAP_DATA[currentMapIndex] && MAP_DATA[currentMapIndex].type === "FIXED") {
-      bgCtx.fillStyle = '#2c2c2c'; const layout = MAP_DATA[currentMapIndex].layout;
-      for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++) if (layout[y] && layout[y][x] && (layout[y][x] === '1' || layout[y][x] === 'E' || layout[y][x] === 'S')) bgCtx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    const map = MAP_DATA[currentMapIndex];
+    if (map && map.type === "FIXED") {
+      const layout = map.layout;
+      for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++) {
+        const cell = layout[y] && layout[y][x] ? layout[y][x] : '0';
+        if (cell === '1' || cell === 'S' || cell === 'E') {
+          bgCtx.fillStyle = '#FF8A3D';
+          bgCtx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        } else if (cell === 'X') {
+          bgCtx.fillStyle = '#E600E6';
+          bgCtx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+      }
     }
+    bgCtx.strokeStyle = '#333';
+    for(let x=0; x<COLS; x++) for(let y=0; y<ROWS; y++) bgCtx.strokeRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     bgCtx.fillStyle = '#2196F3'; bgCtx.fillRect(startPos.x*TILE_SIZE, startPos.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     bgCtx.fillStyle = '#F44336'; bgCtx.fillRect(endPos.x*TILE_SIZE, endPos.y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
     bgCtx.fillStyle = 'rgba(0,0,0,0.6)'; bgCtx.font = 'bold 10px Arial'; bgCtx.textAlign = 'center';
@@ -167,14 +251,117 @@ function setupMap(m) {
     let s, e;
     for(let y=0; y<m.layout.length; y++) for(let x=0; x<m.layout[0].length; x++) { if(m.layout[y][x]==='S') s={x,y}; if(m.layout[y][x]==='E') e={x,y}; }
     startPos=s; endPos=e;
-    let q = [[s.x, s.y, []]], vis = new Set([`${s.x},${s.y}`]);
-    while(q.length > 0) {
-        let [x, y, p] = q.shift(), cur = [...p, {x,y}];
-        if (x===e.x && y===e.y) { m.fixedPath = cur; return; }
-        [{x:x+1,y}, {x:x-1,y}, {x,y:y+1}, {x,y:y-1}, {x:x+1,y:y+1}, {x:x+1,y:y-1}, {x:x-1,y:y+1}, {x:x-1,y:y-1}].forEach(n => {
-            if(n.x>=0 && n.x<m.cols && n.y>=0 && n.y<m.rows && (m.layout[n.y][n.x]==='1'||m.layout[n.y][n.x]==='E') && !vis.has(`${n.x},${n.y}`)) { vis.add(`${n.x},${n.y}`); q.push([n.x, n.y, cur]); }
-        });
-    } m.fixedPath = [];
+    const key = (x, y) => `${x},${y}`;
+    const parseKey = (k) => {
+      const [x, y] = k.split(',').map(Number);
+      return { x, y };
+    };
+    const isWalkable = (x, y) => {
+      if (x < 0 || x >= m.cols || y < 0 || y >= m.rows) return false;
+      const cell = m.layout[y] && m.layout[y][x];
+      return cell === '1' || cell === 'S' || cell === 'E';
+    };
+
+    const dist = new Map();
+    const parents = new Map();
+    const q = [[s.x, s.y]];
+    const startKey = key(s.x, s.y);
+    const endKey = key(e.x, e.y);
+    dist.set(startKey, 0);
+    parents.set(startKey, []);
+
+    while (q.length > 0) {
+      const [x, y] = q.shift();
+      const curKey = key(x, y);
+      const curDist = dist.get(curKey);
+      [{x:x+1,y}, {x:x-1,y}, {x,y:y+1}, {x,y:y-1}].forEach(n => {
+        if (!isWalkable(n.x, n.y)) return;
+        const nk = key(n.x, n.y);
+        const nd = curDist + 1;
+        if (!dist.has(nk) || nd < dist.get(nk)) {
+          dist.set(nk, nd);
+          parents.set(nk, [curKey]);
+          q.push([n.x, n.y]);
+        } else if (nd === dist.get(nk)) {
+          const p = parents.get(nk) || [];
+          p.push(curKey);
+          parents.set(nk, p);
+        }
+      });
+    }
+
+    if (!dist.has(endKey)) {
+      m.fixedPaths = [];
+      m.fixedPath = [];
+      return;
+    }
+
+    const maxPaths = 64;
+    const allPaths = [];
+    const buildPaths = (k, revPath) => {
+      if (allPaths.length >= maxPaths) return;
+      if (k === startKey) {
+        const full = [...revPath, parseKey(k)].reverse();
+        allPaths.push(full);
+        return;
+      }
+      const prev = parents.get(k) || [];
+      const node = parseKey(k);
+      for (const pk of prev) {
+        buildPaths(pk, [...revPath, node]);
+        if (allPaths.length >= maxPaths) return;
+      }
+    };
+
+    buildPaths(endKey, []);
+    m.fixedPaths = allPaths;
+    if (!m.fixedPaths || m.fixedPaths.length === 0) {
+      m.fixedPath = [];
+      return;
+    }
+    if (typeof m._fpIndex !== 'number' || m._fpIndex < 0) m._fpIndex = 0;
+    if (m._fpIndex >= m.fixedPaths.length) m._fpIndex = 0;
+    m.fixedPath = m.fixedPaths[m._fpIndex];
+}
+
+function getFixedMapSpawnPath() {
+  const m = MAP_DATA[currentMapIndex];
+  if (!m || m.type !== 'FIXED') return null;
+  if (Array.isArray(m.fixedPaths) && m.fixedPaths.length > 0) {
+    if (isAdminTestMode) {
+      if (adminSettings.pathMode === 'path0') return m.fixedPaths[0] || m.fixedPath || null;
+      if (adminSettings.pathMode === 'path1') return m.fixedPaths[Math.min(1, m.fixedPaths.length - 1)] || m.fixedPath || null;
+    }
+    return m.fixedPaths[Math.floor(Math.random() * m.fixedPaths.length)];
+  }
+  return m.fixedPath || null;
+}
+
+function drawAdminPathOverlay() {
+  if (!isAdminTestMode || !adminSettings.showPaths) return;
+  enemies.forEach((enemy, idx) => {
+    if (!enemy.path || enemy.path.length === 0) return;
+    const path = enemy.path.slice(Math.max(0, enemy.pathIndex || 0));
+    if (path.length === 0) return;
+    const hue = (idx * 47) % 360;
+    ctx.strokeStyle = `hsla(${hue}, 100%, 65%, 0.85)`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    path.forEach((p, i) => {
+      const px = p.x * TILE_SIZE + TILE_SIZE / 2;
+      const py = p.y * TILE_SIZE + TILE_SIZE / 2;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const head = path[0];
+    if (head) {
+      ctx.fillStyle = `hsla(${hue}, 100%, 75%, 1)`;
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText(`${enemy.type}#${idx + 1}`, head.x * TILE_SIZE + 4, head.y * TILE_SIZE + 12);
+    }
+  });
 }
 
 const bgMusic = new Audio('bgm.mp3'); bgMusic.loop = true; bgMusic.volume = 0.3;
@@ -253,7 +440,6 @@ const TOWER_TYPES = {
   ENGIE:   { color: '#FFC107', range: 160, reload: 60,  damage: 6,    baseCost: 600, isEngie: true,     bullet: '#FFC107', maxConstructs: 1 },
   RAILGUN: { color: '#E91E63', range: 400, reload: 150, damage: 40,   baseCost: 3000, bullet: '#00FFFF', isRail: true },
   FARM:    { color: '#8BC34A', range: 0,   reload: 0,   damage: 0,    baseCost: 250, isFarm: true,      baseIncome: 50 },
-  // NEW TOWERS
   SNARE:   { color: '#9C27B0', range: 120, reload: 80,  damage: 0,    baseCost: 350, isSnare: true },
   MORTAR:  { color: '#FF6F00', range: 250, reload: 120, damage: 25,   baseCost: 800, bullet: 'gold',    splashRadius: 100, isMortar: true },
   LASER:   { color: '#00FF00', range: 200, reload: 50,  damage: 8,    baseCost: 900, isLaser: true,     duration: 120 },
@@ -285,15 +471,102 @@ const ENEMY_TYPES = {
   SPEEDDEM:  { color: '#FF1744', speed: 3.0, hp: 5,   armor: 0, reward: 25 },
   REGEN:     { color: '#76FF03', speed: 0.77, hp: 25,  armor: 1, reward: 40, isRegen: true },
   SWARM:     { color: '#FF9800', speed: 1.1, hp: 8,   armor: 0, reward: 12, isSwarm: true, spawns: 'SPEEDDEM', spawnCount: 3 },
-  REVERSECHAMELEON: { color: '#FFFFFF', speed: 0.85, hp: 35, armor: 2, reward: 80, isReverseChameleon: true }
+  Achillies: { color: '#FFFFFF', speed: 0.85, hp: 35, armor: 2, reward: 80, isReverseChameleon: true }
 };
 
-const WAVE_COLORS = { NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', SHIELD: '#00BCD4', CHAMELEON: '#E91E63', SLIME: '#8BC34A', BOSS: '#FF0000', ARMORED: '#4A4A4A', INVISIBLE: '#CCCCCC', SPEEDDEM: '#FF1744', REGEN: '#76FF03', SWARM: '#FF9800', REVERSECHAMELEON: '#FFFFFF' };
+const WAVE_COLORS = { NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', SHIELD: '#00BCD4', CHAMELEON: '#E91E63', SLIME: '#8BC34A', BOSS: '#FF0000', ARMORED: '#4A4A4A', INVISIBLE: '#CCCCCC', SPEEDDEM: '#FF1744', REGEN: '#76FF03', SWARM: '#FF9800', Achillies: '#FFFFFF' };
 
 let gold=10000, lives=20, waveNumber=0, buildType=null, selectedTower=null, selectedEnemy=null, enemiesLeftToSpawn=0, spawnTimer=0, waveCooldown=0;
 let isPaused=true, isWaveActive=false, isGameOver=false, gameSpeed=1, hoverGx=-1, hoverGy=-1, frameCount=0;
 let autoStartWaves = false;
 window.toggleAutoStart = (val) => autoStartWaves = val;
+
+let isAdminTestMode = false;
+const ADMIN_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a', 'Enter'];
+let adminSeqIndex = 0;
+const ADMIN_CODE_PHRASE = 'weAreAdmin';
+const ADMIN_LOG_LIMIT = 32;
+let adminLogs = [];
+let adminSettings = {
+  freezeEnemies: false,
+  freeBuild: false,
+  instantUpgrade: false,
+  fullRefund: false,
+  showPaths: false,
+  pathMode: 'random',
+  spawnLoop: false,
+  spawnLoopFrames: 30,
+  spawnLoopCounter: 0
+};
+
+function logAdmin(msg) {
+  if (!isAdminTestMode) return;
+  adminLogs.push(`[${frameCount}] ${msg}`);
+  if (adminLogs.length > ADMIN_LOG_LIMIT) adminLogs.shift();
+  const out = document.getElementById('adminLog');
+  if (out) {
+    out.innerHTML = adminLogs.map(x => `<div>${x}</div>`).join('');
+    out.scrollTop = out.scrollHeight;
+  }
+}
+
+function syncAdminPanelInputs() {
+  const setChecked = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!val;
+  };
+  const setValue = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(val);
+  };
+  setChecked('adminFreezeEnemies', adminSettings.freezeEnemies);
+  setChecked('adminFreeBuild', adminSettings.freeBuild);
+  setChecked('adminInstantUpgrade', adminSettings.instantUpgrade);
+  setChecked('adminFullRefund', adminSettings.fullRefund);
+  setChecked('adminShowPaths', adminSettings.showPaths);
+  setChecked('adminSpawnLoop', adminSettings.spawnLoop);
+  setValue('adminPathMode', adminSettings.pathMode);
+  setValue('adminSpawnLoopFrames', adminSettings.spawnLoopFrames);
+}
+
+function adminProgressWritesBlocked() {
+  return isAdminTestMode;
+}
+
+function showAdminPanel() {
+  const panel = document.getElementById('adminTestPanel');
+  if (panel) panel.style.display = 'block';
+  syncAdminPanelInputs();
+}
+
+function hideAdminPanel() {
+  const panel = document.getElementById('adminTestPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+function refreshAdminEnemyList() {
+  const sel = document.getElementById('adminEnemyType');
+  if (!sel) return;
+  const cur = sel.value;
+  const keys = Object.keys(ENEMY_TYPES);
+  sel.innerHTML = keys.map(k => `<option value="${k}">${k}</option>`).join('');
+  if (keys.includes(cur)) sel.value = cur;
+}
+
+function tryUnlockAdminMode() {
+  const code = prompt('Admin access code:');
+  if (!code) return;
+  if (code !== ADMIN_CODE_PHRASE) {
+    alert('Access denied.');
+    return;
+  }
+  isAdminTestMode = true;
+  refreshAdminEnemyList();
+  syncAdminPanelInputs();
+  showAdminPanel();
+  logAdmin('Admin mode enabled');
+  alert('Admin test mode enabled.');
+}
 
 // NEW: Game modes and features
 let gameMode = 'STANDARD'; // STANDARD, ENDLESS
@@ -333,7 +606,7 @@ const DAILY_CHALLENGE_TEMPLATES = [
 
 const FARM_UPGRADE_COSTS = [0, 200, 400, 700, 1200], FARM_INCOME_LEVELS = [50, 100, 200, 350, 500];
 let research = { bounty: 0, piercing: 0, interest: 0.01 };
-let grid = Array.from({ length: 15 }, () => Array(24).fill(0));
+let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 let enemies = [], towers = [], projectiles = [], traps = [];
 
 function findPath(sx = startPos.x, sy = startPos.y) {
@@ -1489,6 +1762,238 @@ window.startEndlessMode = (difficulty) => {
 window.returnToMenu = () => { document.getElementById('game-root').style.display = 'none'; document.getElementById('mainMenu').style.display = 'flex'; isPaused = true; };
 window.buyResearch = (type) => { const costs = { bounty: 500, piercing: 600, interest: 750 }; if (gold >= costs[type]) { gold -= costs[type]; if (type === 'bounty') research.bounty += 5; if (type === 'piercing') research.piercing += 2; if (type === 'interest') research.interest += 0.02; const btn = document.getElementById('res_' + type); if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; } } };
 window.setBuildType = t => { buildType = buildType === t ? null : t; selectedTower = null; selectedEnemy = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); if (buildType) { const btn = document.getElementById('btn_' + buildType); if (btn) btn.classList.add('active-build'); } updateSelectionUI(); drawHoverPreview(); };
+
+// Load a different map while in-game without returning to main menu
+window.loadMap = (mIdx) => {
+  if (!MAP_DATA[mIdx]) return;
+  currentMapIndex = mIdx;
+  const m = MAP_DATA[mIdx];
+  COLS = m.cols; ROWS = m.rows;
+  canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE;
+  pCanvas.width = COLS * TILE_SIZE; pCanvas.height = ROWS * TILE_SIZE;
+  setupMap(m);
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  drawBgCache();
+  recalculateAllPaths();
+  updateShopAvailability();
+};
+
+// Set the current wave number for preview/testing
+window.setWaveNumber = (n) => {
+  if (isNaN(n) || n < 0) return;
+  waveNumber = Math.floor(n);
+  const wd = document.getElementById('waveDisplay'); if (wd) wd.innerText = waveNumber;
+  updateWavePreview();
+};
+
+window.adminLoadMap = (mIdx) => {
+  if (!isAdminTestMode) return;
+  window.loadMap(mIdx);
+  logAdmin(`Loaded map index ${mIdx}`);
+  syncAdminPanelInputs();
+};
+
+window.adminSetWave = () => {
+  if (!isAdminTestMode) return;
+  const input = document.getElementById('adminWaveInput');
+  const val = input ? parseInt(input.value || '0', 10) : 0;
+  window.setWaveNumber(val);
+  logAdmin(`Set wave to ${Math.floor(val || 0)}`);
+};
+
+window.adminTogglePause = () => {
+  if (!isAdminTestMode) return;
+  togglePause();
+  logAdmin(isPaused ? 'Paused simulation' : 'Resumed simulation');
+};
+
+window.adminStartWaveNow = () => {
+  if (!isAdminTestMode) return;
+  if (!isWaveActive && enemies.length === 0 && enemiesLeftToSpawn === 0) {
+    waveNumber++;
+    enemiesLeftToSpawn = waveNumber % 10 === 0 ? 1 : 5 + waveNumber;
+    spawnTimer = 999;
+    isWaveActive = true;
+    isPaused = false;
+    updateWavePreview();
+    logAdmin(`Started wave ${waveNumber}`);
+  }
+};
+
+window.adminClearEnemies = () => {
+  if (!isAdminTestMode) return;
+  enemies = [];
+  enemiesLeftToSpawn = 0;
+  isWaveActive = false;
+  logAdmin('Cleared all enemies');
+};
+
+window.adminClearTowers = () => {
+  if (!isAdminTestMode) return;
+  towers = [];
+  traps = [];
+  selectedTower = null;
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  if (MAP_DATA[currentMapIndex].type === 'FIXED') {
+    const layout = MAP_DATA[currentMapIndex].layout;
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (layout[y] && layout[y][x] && layout[y][x] !== '0') grid[y][x] = 1;
+  }
+  recalculateAllPaths();
+  updateSelectionUI();
+  logAdmin('Cleared all towers');
+};
+
+window.adminSetSpeed = () => {
+  if (!isAdminTestMode) return;
+  const sel = document.getElementById('adminSpeedSelect');
+  const next = sel ? parseFloat(sel.value || '1') : 1;
+  gameSpeed = Math.max(0.1, Math.min(20, next));
+  const btn = document.getElementById('speedBtn');
+  if (btn) {
+    btn.innerText = `${gameSpeed}x`;
+    btn.classList.toggle('fast', gameSpeed > 1);
+  }
+  logAdmin(`Set sim speed to ${gameSpeed}x`);
+};
+
+window.adminToggleFreeze = (val) => {
+  if (!isAdminTestMode) return;
+  adminSettings.freezeEnemies = !!val;
+  logAdmin(adminSettings.freezeEnemies ? 'Enemy movement frozen' : 'Enemy movement restored');
+};
+
+window.adminApplyEconomy = () => {
+  if (!isAdminTestMode) return;
+  const g = document.getElementById('adminGoldInput');
+  const l = document.getElementById('adminLivesInput');
+  gold = Math.max(0, parseInt(g ? g.value : '0', 10) || 0);
+  lives = Math.max(1, parseInt(l ? l.value : '1', 10) || 1);
+  logAdmin(`Economy set: gold=${gold}, lives=${lives}`);
+};
+
+window.adminToggleFreeBuild = (val) => {
+  if (!isAdminTestMode) return;
+  adminSettings.freeBuild = !!val;
+  logAdmin(`Free build ${adminSettings.freeBuild ? 'enabled' : 'disabled'}`);
+};
+
+window.adminToggleInstantUpgrade = (val) => {
+  if (!isAdminTestMode) return;
+  adminSettings.instantUpgrade = !!val;
+  logAdmin(`Free upgrades ${adminSettings.instantUpgrade ? 'enabled' : 'disabled'}`);
+};
+
+window.adminToggleFullRefund = (val) => {
+  if (!isAdminTestMode) return;
+  adminSettings.fullRefund = !!val;
+  logAdmin(`Full refund ${adminSettings.fullRefund ? 'enabled' : 'disabled'}`);
+};
+
+window.adminSetPathMode = () => {
+  if (!isAdminTestMode) return;
+  const sel = document.getElementById('adminPathMode');
+  adminSettings.pathMode = sel ? sel.value : 'random';
+  const map = MAP_DATA[currentMapIndex];
+  if (map && map.type === 'FIXED' && Array.isArray(map.fixedPaths) && map.fixedPaths.length > 0) {
+    if (adminSettings.pathMode === 'path0') map.fixedPath = map.fixedPaths[0] || map.fixedPath;
+    if (adminSettings.pathMode === 'path1') map.fixedPath = map.fixedPaths[Math.min(1, map.fixedPaths.length - 1)] || map.fixedPath;
+    recalculateAllPaths();
+  }
+  logAdmin(`Path mode set to ${adminSettings.pathMode}`);
+};
+
+window.adminTogglePathOverlay = (val) => {
+  if (!isAdminTestMode) return;
+  adminSettings.showPaths = !!val;
+  logAdmin(`Path overlay ${adminSettings.showPaths ? 'enabled' : 'disabled'}`);
+};
+
+window.adminToggleSpawnLoop = (val) => {
+  if (!isAdminTestMode) return;
+  adminSettings.spawnLoop = !!val;
+  adminSettings.spawnLoopCounter = 0;
+  const sp = document.getElementById('adminSpawnLoopFrames');
+  adminSettings.spawnLoopFrames = Math.max(1, parseInt(sp ? sp.value : '30', 10) || 30);
+  logAdmin(`Spawn loop ${adminSettings.spawnLoop ? 'enabled' : 'disabled'} every ${adminSettings.spawnLoopFrames}f`);
+};
+
+function buildEnemyFromAdmin(type) {
+  const hpMultEl = document.getElementById('adminHpMult');
+  const spMultEl = document.getElementById('adminSpeedMult');
+  const hpMult = Math.max(0.1, parseFloat(hpMultEl ? hpMultEl.value : '1') || 1);
+  const spMult = Math.max(0.1, parseFloat(spMultEl ? spMultEl.value : '1') || 1);
+  const forceCamo = !!(document.getElementById('adminSpawnCamo') && document.getElementById('adminSpawnCamo').checked);
+  const forceShield = !!(document.getElementById('adminSpawnShield') && document.getElementById('adminSpawnShield').checked);
+  const forceArmored = !!(document.getElementById('adminSpawnArmored') && document.getElementById('adminSpawnArmored').checked);
+
+  const p = MAP_DATA[currentMapIndex].type === 'FIXED' ? getFixedMapSpawnPath() : findPath();
+  if (!p && type !== 'FLYER') return null;
+  const enemy = new Enemy(p || [], type);
+  enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * hpMult));
+  enemy.health = enemy.maxHealth;
+  enemy.baseSpeed = Math.max(0.05, enemy.baseSpeed * spMult);
+  enemy.speed = enemy.baseSpeed;
+  if (forceCamo) enemy.isCamo = true;
+  if (forceShield) enemy.isShield = true;
+  if (forceArmored) {
+    enemy.isArmored = true;
+    enemy.armor += 4;
+  }
+  return enemy;
+}
+
+window.adminSpawnEnemy = () => {
+  if (!isAdminTestMode) return;
+  const typeSel = document.getElementById('adminEnemyType');
+  const countInput = document.getElementById('adminEnemyCount');
+  const type = typeSel ? typeSel.value : 'NORMAL';
+  const count = Math.max(1, Math.min(100, parseInt(countInput ? countInput.value : '1', 10) || 1));
+  if (!ENEMY_TYPES[type]) return;
+
+  let spawned = 0;
+  for (let i = 0; i < count; i++) {
+    const enemy = buildEnemyFromAdmin(type);
+    if (!enemy) continue;
+    enemies.push(enemy);
+    spawned++;
+  }
+  if (spawned > 0) {
+    isWaveActive = true;
+    isPaused = false;
+    logAdmin(`Spawned ${spawned} x ${type}`);
+  }
+};
+
+window.adminSpawnPreset = (preset) => {
+  if (!isAdminTestMode) return;
+  if (preset === 'boss') {
+    for (let i = 0; i < 3; i++) {
+      const e = buildEnemyFromAdmin('BOSS');
+      if (e) enemies.push(e);
+    }
+    logAdmin('Spawn preset: boss');
+  } else if (preset === 'mixed') {
+    ['NORMAL', 'RUNNER', 'TANK', 'FLYER', 'GHOST', 'ARMORED', 'INVISIBLE', 'CHAMELEON'].forEach(t => {
+      const e = buildEnemyFromAdmin(t);
+      if (e) enemies.push(e);
+    });
+    logAdmin('Spawn preset: mixed');
+  }
+  if (enemies.length > 0) {
+    isWaveActive = true;
+    isPaused = false;
+  }
+};
+
+window.adminKillSelectedEnemy = () => {
+  if (!isAdminTestMode || !selectedEnemy) return;
+  if (selectedEnemy.alive) {
+    selectedEnemy.alive = false;
+    selectedEnemy = null;
+    updateSelectionUI();
+    logAdmin('Killed selected enemy');
+  }
+};
 window.setTargetMode = (val) => { if (selectedTower) { selectedTower.targetMode = val; updateSelectionUI(); } };
 window.upgradeTower = (stat) => {
     const t = selectedTower;
@@ -1546,10 +2051,13 @@ window.upgradeTower = (stat) => {
     if (specUpgrades.includes(stat) && t[stat] >= 20) return;
 
     // 2. Execute transaction and apply math
-    if (gold >= cost) {
-        gold -= cost;
-        t.totalSpent += cost;
-      runStats.spent += cost;
+    const freeUpgradeActive = isAdminTestMode && adminSettings.instantUpgrade;
+    if (freeUpgradeActive || gold >= cost) {
+        if (!freeUpgradeActive) {
+          gold -= cost;
+          t.totalSpent += cost;
+          runStats.spent += cost;
+        }
 
         switch (stat) {
             case 'speed':
@@ -1638,7 +2146,10 @@ window.cycleTargeting = () => {
 
 window.removeTower = () => {
     if (!selectedTower) return;
-    gold += Math.floor(selectedTower.totalSpent / 2);
+    const refund = (isAdminTestMode && adminSettings.fullRefund)
+      ? Math.floor(selectedTower.totalSpent)
+      : Math.floor(selectedTower.totalSpent / 2);
+    gold += refund;
     grid[selectedTower.gy][selectedTower.gx] = 0;
     towers = towers.filter(t => t !== selectedTower);
     recalculateAllPaths();
@@ -1678,13 +2189,17 @@ canvas.addEventListener('mousedown', e => {
   if (buildType) {
     if (buildType === 'FARM' && towers.filter(t => t.isFarm).length >= 8) { alert("Maximum of 8 Farms allowed!"); buildType = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); updateSelectionUI(); drawHoverPreview(); return; }
     const cost = getTowerCost(buildType);
-    if (gold >= cost && grid[gy] && grid[gy][gx] === 0) {
+    const freeBuildActive = isAdminTestMode && adminSettings.freeBuild;
+    if ((freeBuildActive || gold >= cost) && grid[gy] && grid[gy][gx] === 0) {
       if ((gx === startPos.x && gy === startPos.y) || (gx === endPos.x && gy === endPos.y)) return;
-      grid[gy][gx] = 1; const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
+      grid[gy][gx] = 1;
+      const p = MAP_DATA[currentMapIndex].type === "FIXED"
+        ? (MAP_DATA[currentMapIndex].fixedPaths && MAP_DATA[currentMapIndex].fixedPaths.length > 0 ? MAP_DATA[currentMapIndex].fixedPaths[0] : MAP_DATA[currentMapIndex].fixedPath)
+        : findPath();
       if (p || TOWER_TYPES[buildType].isFarm) {
-        gold -= cost;
+        if (!freeBuildActive) gold -= cost;
         towers.push(new Tower(gx, gy, buildType));
-        runStats.spent += cost;
+        if (!freeBuildActive) runStats.spent += cost;
         runStats.towerTypes.add(buildType);
         runStats.maxTowers = Math.max(runStats.maxTowers, towers.length);
         recalculateAllPaths();
@@ -1698,6 +2213,19 @@ canvas.addEventListener('mousedown', e => {
 function tick() {
   if (lives <= 0 || isPaused) return;
   frameCount++;
+
+  if (isAdminTestMode && adminSettings.spawnLoop) {
+    adminSettings.spawnLoopCounter++;
+    const loopFramesEl = document.getElementById('adminSpawnLoopFrames');
+    if (loopFramesEl) {
+      adminSettings.spawnLoopFrames = Math.max(1, parseInt(loopFramesEl.value || '30', 10) || 30);
+    }
+    if (adminSettings.spawnLoopCounter >= adminSettings.spawnLoopFrames) {
+      adminSettings.spawnLoopCounter = 0;
+      window.adminSpawnEnemy();
+    }
+  }
+
   runStats.maxTowers = Math.max(runStats.maxTowers, towers.length);
   evaluateDailyChallenges();
   checkAchievements();
@@ -1758,7 +2286,7 @@ function tick() {
         else if(waveNumber>1&&r>0.2) { if(r > 0.25) type = 'RUNNER'; else type = 'SPEEDDEM'; }
         else type = 'NORMAL';
     }
-    const p = MAP_DATA[currentMapIndex].type === "FIXED" ? MAP_DATA[currentMapIndex].fixedPath : findPath();
+    const p = MAP_DATA[currentMapIndex].type === "FIXED" ? getFixedMapSpawnPath() : findPath();
     // FIX: Don't spawn enemies without valid paths (except FLYER which can fly anywhere)
     if (!p && type !== 'FLYER') return;
     if (p) enemies.push(new Enemy(p, type));
@@ -1778,11 +2306,11 @@ function tick() {
     return true;
   });
 
-  enemies = enemies.filter(e => {
-      e.update();
+    enemies = enemies.filter(e => {
+      if (!(isAdminTestMode && adminSettings.freezeEnemies)) e.update();
       if (!e.alive && selectedEnemy === e) { selectedEnemy = null; updateSelectionUI(); }
       return e.alive;
-  });
+    });
   projectiles = projectiles.filter(p => { p.update(); return p.alive; });
   traps = traps.filter(tr => { tr.update(); return tr.alive; });
   particles = particles.filter(p => { p.update(); return p.l > 0; });
@@ -1801,6 +2329,13 @@ function update() {
     if (bgCanvas.width > 0) ctx.drawImage(bgCanvas, 0, 0);
 
     traps.forEach(tr => tr.draw()); towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw()); particles.forEach(p => p.draw()); upgradeEffects.forEach(e => e.draw());
+    drawAdminPathOverlay();
+
+    if (isAdminTestMode) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.font = 'bold 12px Arial';
+      ctx.fillText('ADMIN TEST MODE (progress writes disabled)', 10, 16);
+    }
 
     if (isPaused) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'white'; ctx.font = 'bold 48px Arial'; ctx.textAlign = 'center'; ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2); ctx.textAlign = 'left'; }
     if (lives <= 0) {
@@ -1887,6 +2422,11 @@ window.updateSaveUI = () => {
 };
 
 window.saveGame = (slot) => {
+  if (adminProgressWritesBlocked()) {
+    alert('Saving is disabled in admin test mode.');
+    logAdmin('Manual save blocked');
+    return;
+  }
     if (lives <= 0) {
         alert("Cannot save a game that is already over!");
         return;
@@ -1997,6 +2537,17 @@ window.deleteSave = (slot) => {
 document.addEventListener('keydown', (e) => {
     // Only intercept hotkeys when we are actually inside a running game
     if (document.getElementById('game-root').style.display === 'none') return;
+
+    const k = (e.key || '').length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === ADMIN_SEQUENCE[adminSeqIndex]) {
+      adminSeqIndex++;
+      if (adminSeqIndex >= ADMIN_SEQUENCE.length) {
+        adminSeqIndex = 0;
+        if (!isAdminTestMode) tryUnlockAdminMode();
+      }
+    } else {
+      adminSeqIndex = k === ADMIN_SEQUENCE[0] ? 1 : 0;
+    }
 
     // Look up any shop button that matches the pressed key
     const btn = document.querySelector(`.shop-group button[data-hotkey="${e.key}"]`);

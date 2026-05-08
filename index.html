@@ -68,6 +68,15 @@
     <button class="sys-btn menu-btn" style="background:#FF9800!important;" onclick="showDifficultyScreen()">🎮 ENDLESS MODE</button>
   </div>
 
+  <div id="mapsList" style="margin-top:18px; max-width:420px;">
+    <h3 class="text-muted">Other Maps</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <button class="sys-btn menu-btn" onclick="startGame(1)">Pointless Journey</button>
+      <button class="sys-btn menu-btn" onclick="startGame(2)">Double Trouble</button>
+      <button class="sys-btn menu-btn" onclick="startGame(3)">Stranded</button>
+    </div>
+  </div>
+
   <div id="difficultyMenuButtons" class="menu-btn-group" style="display:none; align-items: center;">
     <h3 class="text-muted">Choose Difficulty</h3>
     <button class="sys-btn menu-btn" style="background:#4CAF50!important;" onclick="startEndlessMode('EASY')">EASY - +50% Gold, Slower Waves</button>
@@ -141,6 +150,77 @@
       <canvas id="pathPreviewCanvas"></canvas>
     </div>
     <div id="sideMenu">
+      <div id="adminTestPanel" class="admin-test-panel" style="display:none;">
+        <h4 class="text-warning">ADMIN TEST MODE</h4>
+        <div class="admin-row">
+          <button class="sys-btn" onclick="adminTogglePause()">Pause/Resume</button>
+          <button class="sys-btn" onclick="adminStartWaveNow()">Start Wave</button>
+          <button class="sys-btn" onclick="adminClearEnemies()">Clear Enemies</button>
+          <button class="sys-btn remove-btn" onclick="adminClearTowers()">Clear Towers</button>
+        </div>
+        <div class="admin-row">
+          <label>Speed</label>
+          <select id="adminSpeedSelect" onchange="adminSetSpeed()">
+            <option value="0.1">0.1x</option>
+            <option value="1" selected>1x</option>
+            <option value="2">2x</option>
+            <option value="5">5x</option>
+            <option value="20">20x</option>
+          </select>
+          <label><input id="adminFreezeEnemies" type="checkbox" onchange="adminToggleFreeze(this.checked)"> Freeze Enemies</label>
+        </div>
+        <div class="admin-row">
+          <input id="adminGoldInput" type="number" min="0" step="100" value="10000" />
+          <input id="adminLivesInput" type="number" min="1" step="1" value="20" />
+          <button class="sys-btn" onclick="adminApplyEconomy()">Set Gold/Lives</button>
+        </div>
+        <div class="admin-row">
+          <label><input id="adminFreeBuild" type="checkbox" onchange="adminToggleFreeBuild(this.checked)"> Free Build</label>
+          <label><input id="adminInstantUpgrade" type="checkbox" onchange="adminToggleInstantUpgrade(this.checked)"> Free Upgrades</label>
+          <label><input id="adminFullRefund" type="checkbox" onchange="adminToggleFullRefund(this.checked)"> Full Sell Refund</label>
+        </div>
+        <div class="admin-row">
+          <label>Path</label>
+          <select id="adminPathMode" onchange="adminSetPathMode()">
+            <option value="random" selected>Random</option>
+            <option value="path0">Path A</option>
+            <option value="path1">Path B</option>
+          </select>
+          <label><input id="adminShowPaths" type="checkbox" onchange="adminTogglePathOverlay(this.checked)"> Show Paths</label>
+        </div>
+        <div class="admin-row">
+          <button class="sys-btn" onclick="adminLoadMap(0)">Load Chaos</button>
+          <button class="sys-btn" onclick="adminLoadMap(1)">Load Pointless</button>
+          <button class="sys-btn" onclick="adminLoadMap(2)">Load Double</button>
+          <button class="sys-btn" onclick="adminLoadMap(3)">Load Stranded</button>
+        </div>
+        <div class="admin-row">
+          <input id="adminWaveInput" type="number" min="0" value="1" />
+          <button class="sys-btn" onclick="adminSetWave()">Set Wave</button>
+        </div>
+        <div class="admin-row">
+          <select id="adminEnemyType"></select>
+          <input id="adminEnemyCount" type="number" min="1" max="100" value="1" />
+          <input id="adminHpMult" type="number" min="0.1" step="0.1" value="1" />
+          <input id="adminSpeedMult" type="number" min="0.1" step="0.1" value="1" />
+          <button class="sys-btn" onclick="adminSpawnEnemy()">Spawn</button>
+        </div>
+        <div class="admin-row">
+          <label><input id="adminSpawnCamo" type="checkbox"> Camo</label>
+          <label><input id="adminSpawnShield" type="checkbox"> Shield</label>
+          <label><input id="adminSpawnArmored" type="checkbox"> Armored</label>
+        </div>
+        <div class="admin-row">
+          <label><input id="adminSpawnLoop" type="checkbox" onchange="adminToggleSpawnLoop(this.checked)"> Loop Spawn</label>
+          <input id="adminSpawnLoopFrames" type="number" min="1" value="30" />
+          <button class="sys-btn" onclick="adminSpawnPreset('boss')">Boss Test</button>
+          <button class="sys-btn" onclick="adminSpawnPreset('mixed')">Mixed Test</button>
+          <button class="sys-btn remove-btn" onclick="adminKillSelectedEnemy()">Kill Selected</button>
+        </div>
+        <div class="admin-row">
+          <div id="adminLog" class="admin-log"></div>
+        </div>
+      </div>
       <div id="statsContent"></div>
       <div id="interestDisplay" class="text-muted"></div>
 
