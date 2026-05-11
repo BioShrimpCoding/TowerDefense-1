@@ -459,12 +459,26 @@ const FARMER_AMMO_ALIASES = {
   IMPROVED: 'BIRDSHOT'
 };
 
+const FARMER_CHOKE_SPREAD_MULTIPLIERS = {
+  MODIFIED: 1,
+  FULL: 0.65,
+  IMPROVED: 0.85
+};
+
 const FARMER_DEFAULT_AMMO = 'BIRDSHOT';
 
 function normalizeFarmerAmmoType(type) {
   if (type && FARMER_AMMO_TYPES[type]) return type;
   if (type && FARMER_AMMO_ALIASES[type]) return FARMER_AMMO_ALIASES[type];
   return FARMER_DEFAULT_AMMO;
+}
+
+function normalizeFarmerChokeType(type) {
+  return FARMER_CHOKE_SPREAD_MULTIPLIERS[type] ? type : 'MODIFIED';
+}
+
+function getFarmerChokeSpreadMultiplier(type) {
+  return FARMER_CHOKE_SPREAD_MULTIPLIERS[normalizeFarmerChokeType(type)] || 1;
 }
 
 function getFarmerAmmoCost(type) {
@@ -598,7 +612,7 @@ window.buyFarmerAmmo = (type) => {
 window.cycleFarmerChokeType = () => {
   if (!selectedTower || selectedTower.type !== 'FARMER') return;
   const modes = ['MODIFIED', 'FULL', 'IMPROVED'];
-  const current = modes.indexOf(selectedTower.chokeType || 'MODIFIED');
+  const current = modes.indexOf(normalizeFarmerChokeType(selectedTower.chokeType || 'MODIFIED'));
   selectedTower.chokeType = modes[(current + 1) % modes.length];
   updateSelectionUI();
 };
@@ -910,13 +924,13 @@ function updateSelectionUI() {
   const farmerAmmoSelector = t.type === 'FARMER' ? `<div style="display:flex;gap:4px;margin-bottom:4px;"><select id="farmerAmmoSelect" ${t.ammoLocked ? 'disabled' : ''} style="flex:1;background:#222;color:white;padding:4px;border:1px solid #555;">
     ${Object.entries(FARMER_AMMO_TYPES).map(([key, ammo]) => `<option value="${key}" ${farmerAmmoType===key?'selected':''}>${ammo.label} (${ammo.cost ? '$' + ammo.cost : 'Free'})</option>`).join('')}
   </select><button onclick="buyFarmerAmmo(document.getElementById('farmerAmmoSelect').value)" style="flex:1;" ${t.ammoLocked ? 'disabled' : ''} data-desc="Buy and equip one ammo type for this Farmer">${t.ammoLocked ? 'Ammo Locked' : 'Buy Ammo'}</button></div><div style="font-size:11px;color:#aaa;margin-bottom:4px;">Choose one ammo type for this Farmer. Birdshot is the default.</div>` : '';
-  const farmerChokeSelector = t.type === 'FARMER' ? `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="cycleFarmerChokeType()" style="width:100%;" data-desc="Cycle Farmer choke types">Choke: ${t.chokeType || 'MODIFIED'}</button></div>` : '';
+  const farmerChokeSelector = t.type === 'FARMER' ? `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="cycleFarmerChokeType()" style="width:100%;" data-desc="Cycle Farmer choke types">Choke: ${normalizeFarmerChokeType(t.chokeType || 'MODIFIED')}</button></div>` : '';
 
   let h = `<h3 style="border-bottom:2px solid ${t.color};padding-bottom:5px;">${t.type}</h3>${row('Level:', t.level + ` / ${lvlMax}`)}${row('Sell:', `$${sellVal}`, '#ffd700')}<br>`;
 
   if (isF) h += row('Income:', `+$${t.income}/wave`, '#FFD700') + row('Total Gen:', `$${t.totalGenerated}`, '#FFD700') + row('Limit:', `${towers.filter(x=>x.isFarm).length} / 8`) + `<div style="font-size:11px; color:#aaa; margin-top:5px;">No upgrades. Build a Farmer nearby to boost it.</div>`;
   else if (t.type === 'FARMER') {
-    h += row('Ammo:', farmerAmmo.label, '#FFD54F') + row('Pellets:', farmerAmmo.pellets, '#FFD54F') + row('Choke:', t.chokeType || 'MODIFIED', '#FFD54F') + row('Farm Boost:', 'Nearby farms produce more', '#FFD54F') + row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white');
+    h += row('Ammo:', farmerAmmo.label, '#FFD54F') + row('Pellets:', farmerAmmo.pellets, '#FFD54F') + row('Choke:', normalizeFarmerChokeType(t.chokeType || 'MODIFIED'), '#FFD54F') + row('Farm Boost:', 'Nearby farms produce more', '#FFD54F') + row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white');
   }
   else if (t.type === 'CHEMIST') h += row('Acid:', 'Bottle + puddle', '#00C853') + row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white');
   else if (t.type === 'SCOUT') h += row('Aura:', t.range.toFixed(1), '#42A5F5') + row('Role:', 'Extends nearby range', '#42A5F5') + row('Railgun:', 'Acts as spotter', '#42A5F5');
@@ -977,10 +991,10 @@ function updateSelectionUI() {
           else if (t.type === 'MINIGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('spreadReduction')" style="flex:1" data-desc="Tighten bullet spread for better accuracy">Spread $${(t.spreadReduction+1)*35}</button><button onclick="upgradeTower('ammoCapacity')" style="flex:1" data-desc="Fire rate boost: Up to 50% faster at 10 levels">Ammo $${(t.ammoCapacity+1)*35}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Bullet damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
           else if (t.type === 'BOMB') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('bounceCount')" style="flex:1" data-desc="Create +1 bouncing sub-projectiles per level">Bounces $${(t.bounceCount+1)*50}</button><button onclick="upgradeTower('fragmentation')" style="flex:1" data-desc="Spawn +1 shrapnel projectiles per level">Fragmentation $${(t.fragmentation+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Blast power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
           else if (t.type === 'FLAME') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('burnDuration')" style="flex:1" data-desc="Extend melt effect by +50 ticks per level">Burn Dur $${(t.burnDuration+1)*40}</button><button onclick="upgradeTower('melt')" style="flex:1" data-desc="Melt damage per tick: +10% per level">Melt Pwr $${(t.meltLevel+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Flame power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button disabled style="flex:1;opacity:0.55;" data-desc="Flame uses a fixed cone and does not gain range">Range Locked</button></div>`;
-          else if (t.type === 'RAILGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('beamWidth')" style="flex:1" data-desc="Increase beam width by +5 pixels per level">Beam Width $${(t.beamWidth+1)*45}</button><button onclick="upgradeTower('piercingPower')" style="flex:1" data-desc="Beam hits +1 additional target per level">Pierce $${(t.piercingPower+1)*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam damage: 25% increase per level">Power $${t.upgrades.damage*40}</button></div>`;
+          else if (t.type === 'RAILGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('overcharge')" style="flex:1" data-desc="Overcharge: +10% base damage per level">Overcharge $${(t.overcharge+1)*45}</button><button onclick="upgradeTower('piercingPower')" style="flex:1" data-desc="Beam hits +1 additional target per level">Pierce $${(t.piercingPower+1)*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam damage: 25% increase per level">Power $${t.upgrades.damage*40}</button></div>`;
           else if (t.type === 'SNARE') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('markDuration')" style="flex:1" data-desc="Stun duration: +5 ticks (0.083 sec) per level">Mark Dur $${(t.markDuration+1)*40}</button><button onclick="upgradeTower('markCapacity')" style="flex:1" data-desc="Can mark +1 enemy per level (base: 6)">Capacity $${(t.markCapacity+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate: 2% faster per level">Rate $${t.upgrades.speed*30}</button>${rB}</div>`;
           else if (t.type === 'MORTAR') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('bounceCount')" style="flex:1" data-desc="Create +1 bouncing sub-projectiles per level">Bounces $${(t.bounceCount+1)*50}</button><button onclick="upgradeTower('fragmentation')" style="flex:1" data-desc="Spawn +1 shrapnel fragments per level">Frags $${(t.fragmentation+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Explosion power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
-          else if (t.type === 'LASER') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('beamWidth')" style="flex:1" data-desc="Increase beam width by +5 pixels per level">Beam Width $${(t.beamWidth+1)*45}</button><button onclick="upgradeTower('beamDuration')" style="flex:1" data-desc="Extend beam fire time by +3 ticks per level">Beam Dur $${(t.beamDuration+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'LASER') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('overcharge')" style="flex:1" data-desc="Overcharge: +10% base damage per level">Overcharge $${(t.overcharge+1)*45}</button><button onclick="upgradeTower('beamDuration')" style="flex:1" data-desc="Extend beam fire time by +3 ticks per level">Beam Dur $${(t.beamDuration+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
           else if (t.type === 'SUPPORT') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('healPower')" style="flex:1" data-desc="Boost all nearby tower stats: +3% speed/dmg/range per level">Boost Lvl $${(t.healPower+1)*45}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Aura range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
           else if (t.type === 'DECOY') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('decoyHealth')" style="flex:1" data-desc="Decoy max health: +2 per level (base: 5)">Health $${(t.decoyHealth+1)*35}</button><button onclick="upgradeTower('aggroRadius')" style="flex:1" data-desc="Attraction range: +300 pixels per level">Aggro $${(t.aggroRadius+1)*35}</button></div>`;
           else h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Damage: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
@@ -1009,6 +1023,9 @@ class Enemy {
     this.armor = s.armor;
     this.meltTicks = 0;
     this.slowTicks = 0;
+    this.meltDamagePerTick = 0;
+    this.meltTickTimer = 0;
+    this.meltSourceTower = null;
     this.slowFactor = 1;
     this.alive = true;
     this.isFlying = !!s.isFlying;
@@ -1072,6 +1089,11 @@ class Enemy {
         baseDuration += sourceTower.burnDuration * 50; // +50 ticks per level
       }
       this.meltTicks = baseDuration;
+      // Set damage-per-tick for melt (affected by source tower's meltLevel)
+      const baseTick = Math.max(1, Math.floor((sourceTower && sourceTower.damage ? sourceTower.damage : dmg) * 0.35));
+      const levelMult = (sourceTower && sourceTower.meltLevel) ? (1 + 0.10 * sourceTower.meltLevel) : 1;
+      this.meltDamagePerTick = Math.max(this.meltDamagePerTick || 0, Math.floor(baseTick * levelMult));
+      this.meltSourceTower = sourceTower || null;
     }
 
     // THE FIX: Trigger death instantly the moment health hits 0, instead of waiting for update()
@@ -1114,7 +1136,23 @@ class Enemy {
 
     this.speed = this.slowTicks > 0 ? this.baseSpeed * this.slowFactor : this.baseSpeed;
     if (this.slowTicks > 0) this.slowTicks--;
-    if (this.meltTicks > 0) this.meltTicks--;
+    if (this.meltTicks > 0) {
+      // Apply periodic melt/burn damage every 15 ticks (matches AcidPool cadence)
+      this.meltTickTimer++;
+      if (this.meltTickTimer >= 15) {
+        this.meltTickTimer = 0;
+        const tickDmg = Math.max(1, Math.floor(this.meltDamagePerTick || 1));
+        if (tickDmg > 0) {
+          // Attribute damage to source tower if available so it increases damageDealt
+          if (this.meltSourceTower) {
+            this.meltSourceTower.damageDealt += this.takeDamage(tickDmg, this.meltSourceTower.type, this.meltSourceTower);
+          } else {
+            this.takeDamage(tickDmg, 'BURN', null);
+          }
+        }
+      }
+      this.meltTicks--;
+    }
     if (this.immuneTimer > 0) this.immuneTimer--;
 
     // Special behavior: Desperator gains speed as it loses health
@@ -1308,12 +1346,14 @@ class Tower {
     this.buffIntensity = 0; this.freezeRadius = 0; this.markDuration = 0; this.markCapacity = 0; this.healPower = 0;
     this.piercing = 0; this.armorPen = 0; this.critChance = 0; this.spreadReduction = 0; this.ammoCapacity = 0;
     this.burnDuration = 0; this.beamWidth = 0; this.piercingPower = 0; this.spikeCount = 0; this.spikeLifespan = 0;
+    this.overcharge = 0;
     this.activationArea = 0; this.decoyHealth = 0; this.aggroRadius = 0; this.bounceCount = 0; this.fragmentation = 0;
     this.beamDuration = 0;
     this.meltLevel = 0; this.slowLevel = 0; this.damageDealt = 0;
     this.fireTimer = 0; this.rechargeTimer = 0; this.currentTargets = [];
     this.flameConeAngle = -Math.PI / 2; this.flamePulse = 0;
     this.isRail = !!TOWER_TYPES[typeKey].isRail; this.isFarm = !!TOWER_TYPES[typeKey].isFarm; this.isEngie = !!TOWER_TYPES[typeKey].isEngie; this.isTrapper = !!TOWER_TYPES[typeKey].isTrapper; this.hasSpotter = false;
+    this.isIce = !!TOWER_TYPES[typeKey].isIce;
     this.isSnare = !!TOWER_TYPES[typeKey].isSnare; this.isLaser = !!TOWER_TYPES[typeKey].isLaser; this.isSupport = !!TOWER_TYPES[typeKey].isSupport; this.isDecoy = !!TOWER_TYPES[typeKey].isDecoy; this.isMortar = !!TOWER_TYPES[typeKey].isMortar; this.isTesla = !!TOWER_TYPES[typeKey].isTesla;
     this.isFarmer = !!TOWER_TYPES[typeKey].isFarmer; this.isChemist = !!TOWER_TYPES[typeKey].isChemist; this.isScout = !!TOWER_TYPES[typeKey].isScout;
     this.baseIncome = TOWER_TYPES[typeKey].baseIncome || 0; this.income = this.baseIncome; this.totalGenerated = 0;
@@ -1506,8 +1546,13 @@ class Tower {
     if (TOWER_TYPES[this.type].isIce) {
       this.timer++;
       if (this.timer >= this.getEffectiveReloadTime()) {
-        let effectiveRange = r2 + (this.freezeRadius * 1000); // +1000 sq per level
-        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= effectiveRange; });
+        
+        const perLevelBonus = 5; // 5 pixels per upgrade
+        const upgradeScale = 1; // no additional scaling
+        const extraRadius = (this.freezeRadius || 0) * perLevelBonus * upgradeScale;
+        const effectiveRadius = this.range + extraRadius;
+        const effectiveRangeSq = effectiveRadius * effectiveRadius;
+        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= effectiveRangeSq; });
         if (inRange.length > 0) {
           playSFX('hit'); spawnParticles(this.x, this.y, '#b3e5fc', 30, 2.5);
           inRange.forEach(e => { e.slowTicks = 120 + this.slowLevel * 30; e.slowFactor = Math.max(0.1, 0.5 - this.slowLevel * 0.05); });
@@ -1676,7 +1721,7 @@ class Tower {
           const ammo = FARMER_AMMO_TYPES[normalizeFarmerAmmoType(this.ammoType || this.chokeType || 'MODIFIED')] || FARMER_AMMO_TYPES.MODIFIED;
           const pelletCount = ammo.pellets + Math.floor((this.level - 1) / 3);
           const aimTarget = inRange[0];
-          const spreadArc = Math.max(0.03, ammo.spread * 1.15);
+          const spreadArc = Math.max(0.03, ammo.spread * 1.15 * getFarmerChokeSpreadMultiplier(this.chokeType || 'MODIFIED'));
 
           for (let i = 0; i < pelletCount; i++) {
             if (!aimTarget) continue;
@@ -1800,35 +1845,37 @@ class Tower {
             this.beamEndY = this.y + Math.sin(angle) * this.range;
             this.railFireTimer = 15;
 
-            // Calculate beam width (base 35 pixels, +5 per beamWidth level)
-            const beamWidth = 35 + (this.beamWidth ? this.beamWidth * 5 : 0);
-            const maxPiercing = this.piercingPower ? this.piercingPower + 1 : 1; // How many enemies can be hit
+            // Beam width uses fixed default (35 px) — overcharge now increases damage instead
+            const beamWidth = 35;
+            // Determine piercing limit robustly: default 1 (no pierce) unless enhanced
+            const maxPiercing = (Number(this.piercingPower) || 0) + 1; // How many enemies can be hit
             let targetsHit = 0;
 
-            enemies.forEach(e => {
-                if (targetsHit >= maxPiercing) return; // Stop if hit limit reached
-                
-                const dx = e.x - this.x;
-                const dy = e.y - this.y;
-                const beamDx = this.beamEndX - this.x;
-                const beamDy = this.beamEndY - this.y;
+            // Use a normal for-loop so we can break early when pierce limit reached
+            for (let i = 0; i < enemies.length; i++) {
+              if (targetsHit >= maxPiercing) break;
+              const e = enemies[i];
+              const dx = e.x - this.x;
+              const dy = e.y - this.y;
+              const beamDx = this.beamEndX - this.x;
+              const beamDy = this.beamEndY - this.y;
 
-                const dot = dx * beamDx + dy * beamDy;
-                const beamLenSq = beamDx * beamDx + beamDy * beamDy;
+              const beamLenSq = beamDx * beamDx + beamDy * beamDy;
+              if (beamLenSq <= 0) continue; // avoid divide-by-zero
 
-                let proj = dot / beamLenSq;
-                if (proj >= 0 && proj <= 1) {
-                    const closestX = this.x + proj * beamDx;
-                    const closestY = this.y + proj * beamDy;
-                    const distToBeamSq = (e.x - closestX)**2 + (e.y - closestY)**2;
-
-                    if (distToBeamSq <= beamWidth * beamWidth) {
-                        this.damageDealt += e.takeDamage(this.damage, this.type, this);
-                        spawnParticles(e.x, e.y, '#00FFFF', 8);
-                        targetsHit++;
-                    }
+              const dot = dx * beamDx + dy * beamDy;
+              const proj = dot / beamLenSq;
+              if (proj >= 0 && proj <= 1) {
+                const closestX = this.x + proj * beamDx;
+                const closestY = this.y + proj * beamDy;
+                const distToBeamSq = (e.x - closestX)**2 + (e.y - closestY)**2;
+                if (distToBeamSq <= beamWidth * beamWidth) {
+                  this.damageDealt += e.takeDamage(this.damage, this.type, this);
+                  spawnParticles(e.x, e.y, '#00FFFF', 8);
+                  targetsHit++;
                 }
-            });
+              }
+            }
         } else {
             projectiles.push(new Projectile(this.x, this.y, target, this.damage, 6, this.type, splash, this));
             if(this.type === 'SNIPER') playSFX('sniper'); else playSFX('shoot');
@@ -1847,8 +1894,12 @@ class Tower {
       ctx.shadowBlur = 10;
       ctx.strokeRect(this.gx * TILE_SIZE + 1, this.gy * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
       if (!this.isFarm) {
+        // Show effective range; for ICE towers include freezeRadius bonus
+        const perLevelBonus = 5; // 5 pixels per upgrade (visual)
+        const upgradeScale = 1;
+        const displayRange = (this.isIce && this.freezeRadius) ? (this.range + (this.freezeRadius * perLevelBonus * upgradeScale)) : this.range;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, displayRange, 0, Math.PI * 2);
         ctx.lineWidth = 1;
         ctx.shadowBlur = 0;
         ctx.strokeStyle = 'rgba(255,255,255,0.35)';
@@ -1897,7 +1948,12 @@ class Tower {
     }
     if (this.isRail && this.railFireTimer > 0) {
       if (gameSettings.flashing) {
-        ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = Math.random() * 6 + 2; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.beamEndX, this.beamEndY); ctx.stroke(); ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = '#00FFFF';
+        // Use stored beam width when available, otherwise a default random glow
+        const drawWidth = (Math.random() * 6 + 2);
+        ctx.lineWidth = drawWidth;
+        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.beamEndX, this.beamEndY); ctx.stroke();
+        ctx.strokeStyle = 'white'; ctx.lineWidth = Math.max(1, Math.floor(drawWidth / 3)); ctx.stroke();
       }
       this.railFireTimer--;
     }
@@ -2026,6 +2082,12 @@ class Projectile {
       }
       if (farmerAmmo.burnTicks) {
         enemy.meltTicks = Math.max(enemy.meltTicks || 0, farmerAmmo.burnTicks);
+        // Set/refresh melt damage-per-tick and attribute source tower when possible
+        const src = this.sourceTower || null;
+        const baseTick = Math.max(1, Math.floor((src && src.damage ? src.damage : this.damage) * 0.25));
+        const levelMult = (src && src.meltLevel) ? (1 + 0.10 * src.meltLevel) : 1;
+        enemy.meltDamagePerTick = Math.max(enemy.meltDamagePerTick || 0, Math.floor(baseTick * levelMult));
+        enemy.meltSourceTower = src;
       }
     };
 
@@ -2551,7 +2613,7 @@ window.upgradeTower = (stat) => {
         case 'spreadReduction': cost = (t.spreadReduction + 1) * 35; break;
         case 'ammoCapacity': cost = (t.ammoCapacity + 1) * 35; break;
         case 'burnDuration': cost = (t.burnDuration + 1) * 40; break;
-        case 'beamWidth': cost = (t.beamWidth + 1) * 45; break;
+        case 'overcharge': cost = (t.overcharge + 1) * 45; break;
         case 'piercingPower': cost = (t.piercingPower + 1) * 60; break;
         case 'spikeCount': cost = (t.spikeCount + 1) * 45; break;
         case 'spikeLifespan': cost = (t.spikeLifespan + 1) * 45; break;
@@ -2569,7 +2631,7 @@ window.upgradeTower = (stat) => {
     if (stat === 'lasers' && (t.upgrades.lasers || 1) >= 5) return;
     if (stat === 'chainAmount' && (t.upgrades.chainAmount || 1) >= 5) return;
     // Cap specialized upgrades at 20
-    const specUpgrades = ['buffIntensity', 'freezeRadius', 'markDuration', 'markCapacity', 'healPower', 'piercing', 'armorPen', 'critChance', 'spreadReduction', 'ammoCapacity', 'burnDuration', 'beamWidth', 'piercingPower', 'spikeCount', 'spikeLifespan', 'activationArea', 'decoyHealth', 'aggroRadius', 'bounceCount', 'fragmentation', 'beamDuration'];
+    const specUpgrades = ['buffIntensity', 'freezeRadius', 'markDuration', 'markCapacity', 'healPower', 'piercing', 'armorPen', 'critChance', 'spreadReduction', 'ammoCapacity', 'burnDuration', 'overcharge', 'piercingPower', 'spikeCount', 'spikeLifespan', 'activationArea', 'decoyHealth', 'aggroRadius', 'bounceCount', 'fragmentation', 'beamDuration'];
     if (specUpgrades.includes(stat) && t[stat] >= 20) return;
 
     // 2. Execute transaction and apply math
@@ -2632,7 +2694,7 @@ window.upgradeTower = (stat) => {
             case 'spreadReduction': t.spreadReduction++; break;
             case 'ammoCapacity': t.ammoCapacity++; break;
             case 'burnDuration': t.burnDuration++; break;
-            case 'beamWidth': t.beamWidth++; break;
+            case 'overcharge': t.overcharge++; t.baseDamage *= 1.10; break;
             case 'piercingPower': t.piercingPower++; break;
             case 'spikeCount': t.spikeCount++; break;
             case 'spikeLifespan': t.spikeLifespan++; break;
@@ -2984,7 +3046,8 @@ window.saveGame = (slot) => {
             maxConstructs: t.maxConstructs, upgrades: t.upgrades, meltLevel: t.meltLevel,
           slowLevel: t.slowLevel, baseDamage: t.baseDamage, baseRange: t.baseRange, baseReload: t.baseReload, baseDuration: t.baseDuration,
           chokeType: t.chokeType,
-          ammoType: t.ammoType
+          ammoType: t.ammoType,
+          overcharge: t.overcharge || 0
         })),
         traps: traps.map(tr => ({ x: tr.x, y: tr.y, damage: tr.damage, towerGx: tr.tower ? tr.tower.gx : null, towerGy: tr.tower ? tr.tower.gy : null }))
     };
@@ -3019,12 +3082,15 @@ window.loadGame = (slot) => {
         t.level = data.level; t.targetMode = data.targetMode || 'First'; t.totalSpent = data.totalSpent; t.damageDealt = data.damageDealt || 0;
         if(t.type === 'FARM' && data.income) t.income = data.income; if(t.type === 'FARM' && data.totalGenerated) t.totalGenerated = data.totalGenerated;
         if(t.type === 'ENGIE' && data.maxConstructs) t.maxConstructs = data.maxConstructs;
-        if(data.upgrades) t.upgrades = data.upgrades; if(data.meltLevel) t.meltLevel = data.meltLevel; if(data.slowLevel) t.slowLevel = data.slowLevel;
+    if(data.upgrades) t.upgrades = data.upgrades; if(data.meltLevel) t.meltLevel = data.meltLevel; if(data.slowLevel) t.slowLevel = data.slowLevel;
         if (data.baseDamage) t.baseDamage = data.baseDamage; if (data.baseRange) t.baseRange = data.baseRange;
         if (data.baseReload) t.baseReload = data.baseReload; if (data.baseDuration) t.baseDuration = data.baseDuration;
+        const savedChokeType = data.chokeType;
         if (data.ammoType) t.ammoType = normalizeFarmerAmmoType(data.ammoType);
-        else if (data.chokeType) t.ammoType = normalizeFarmerAmmoType(data.chokeType);
-        t.chokeType = t.ammoType;
+        else if (savedChokeType && !['MODIFIED', 'FULL', 'IMPROVED'].includes(savedChokeType)) t.ammoType = normalizeFarmerAmmoType(savedChokeType);
+        t.chokeType = normalizeFarmerChokeType(savedChokeType);
+      // migrate legacy beamWidth to new overcharge, or load overcharge directly
+      t.overcharge = Number(data.overcharge || data.beamWidth || 0) || 0;
         if (grid[data.gy] && grid[data.gy][data.gx] !== undefined) grid[data.gy][data.gx] = 1;
         towers.push(t);
     });
