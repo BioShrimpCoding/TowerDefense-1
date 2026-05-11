@@ -244,6 +244,13 @@ canvas {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  background: var(--tower-btn-bg, #37474f);
+  border: 1px solid var(--tower-btn-border, #607d8b);
+  color: var(--tower-btn-text, #ffffff);
+}
+
+.shop-group button:hover {
+  filter: brightness(1.08);
 }
 
 #wavePreview { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-mid); }

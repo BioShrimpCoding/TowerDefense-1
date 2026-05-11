@@ -66,6 +66,7 @@
     <button class="sys-btn menu-btn btn-info" onclick="openEnemyIndex()">📖 ENEMY INDEX</button>
     <button class="sys-btn menu-btn" onclick="startGame(0)">🌪️ CHAOS ARENA</button>
     <button class="sys-btn menu-btn" style="background:#FF9800!important;" onclick="showDifficultyScreen()">🎮 ENDLESS MODE</button>
+    <button class="sys-btn menu-btn" style="background:#9C27B0!important;" onclick="startSandboxMode()">🎨 SANDBOX MODE</button>
   </div>
 
   <div id="mapsList" style="margin-top:18px; max-width:420px;">
@@ -124,23 +125,26 @@
 
     <div class="shop-group">
       <button id="btn_PISTOL" onclick="setBuildType('PISTOL')" data-hotkey="1" data-desc="[1] Pistol: Fast firing, low damage. Good for shields.">Pistol<br><span class="cost-disp" data-type="PISTOL"></span></button>
-      <button id="btn_SNIPER" onclick="setBuildType('SNIPER')" data-hotkey="2" data-desc="[2] Sniper: Slow fire rate, massive damage. Ideal for Bosses.">Sniper<br><span class="cost-disp" data-type="SNIPER"></span></button>
-      <button id="btn_MINIGUN" onclick="setBuildType('MINIGUN')" data-hotkey="3" data-desc="[3] Gatling: Extreme fire rate. Melts standard enemies.">Gatling<br><span class="cost-disp" data-type="MINIGUN"></span></button>
       <button id="btn_FLAME" onclick="setBuildType('FLAME')" data-hotkey="4" data-desc="[4] Flame: Deals area-of-effect burn damage over time.">Flame<br><span class="cost-disp" data-type="FLAME"></span></button>
-      <button id="btn_ICE" onclick="setBuildType('ICE')" class="ice-btn" data-hotkey="5" data-desc="[5] Ice: Slows enemies in a radius. Deals no damage.">Ice<br><span class="cost-disp" data-type="ICE"></span></button>
+      <button id="btn_ICE" onclick="setBuildType('ICE')" data-hotkey="5" data-desc="[5] Ice: Slows enemies in a radius. Deals no damage.">Ice<br><span class="cost-disp" data-type="ICE"></span></button>
+      <button id="btn_DECOY" onclick="setBuildType('DECOY')" data-desc="Decoy: Attracts enemies, forcing them to pursue it.">Decoy<br><span class="cost-disp" data-type="DECOY"></span></button>
+      <button id="btn_FARM" onclick="setBuildType('FARM')" data-hotkey="=" data-desc="[=] Farm: Generates extra gold at the end of every wave.">Farm<br><span class="cost-disp" data-type="FARM"></span></button>
+      <button id="btn_SNIPER" onclick="setBuildType('SNIPER')" data-hotkey="2" data-desc="[2] Sniper: Slow fire rate, massive damage. Ideal for Bosses.">Sniper<br><span class="cost-disp" data-type="SNIPER"></span></button>
+      <button id="btn_FARMER" onclick="setBuildType('FARMER')" data-hotkey="+" data-desc="[+] Farmer: Shotgun tower that boosts nearby farm production.">Farmer<br><span class="cost-disp" data-type="FARMER"></span></button>
+      <button id="btn_SNARE" onclick="setBuildType('SNARE')" data-desc="Snare: Stuns enemies in place temporarily.">Snare<br><span class="cost-disp" data-type="SNARE"></span></button>
       <button id="btn_BOMB" onclick="setBuildType('BOMB')" data-hotkey="6" data-desc="[6] Artillery: Lobs heavy explosives for splash damage.">Artillery<br><span class="cost-disp" data-type="BOMB"></span></button>
-      <button id="btn_TRAPPER" onclick="setBuildType('TRAPPER')" class="trap-btn" data-hotkey="7" data-desc="[7] Trapper: Drops spikes on the track to damage passing enemies.">Trapper<br><span class="cost-disp" data-type="TRAPPER"></span></button>
-      <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" class="accel-btn" data-hotkey="8" data-desc="[8] Accel: Speeds up the fire rate of nearby towers.">Accel<br><span class="cost-disp" data-type="ACCEL"></span></button>
+      <button id="btn_SCOUT" onclick="setBuildType('SCOUT')" data-hotkey="." data-desc=". Scout: Extends range of towers around it and spots for Railgun.">Scout<br><span class="cost-disp" data-type="SCOUT"></span></button>
+      <button id="btn_MINIGUN" onclick="setBuildType('MINIGUN')" data-hotkey="3" data-desc="[3] Gatling: Extreme fire rate. Melts standard enemies.">Gatling<br><span class="cost-disp" data-type="MINIGUN"></span></button>
+      <button id="btn_SUPPORT" onclick="setBuildType('SUPPORT')" data-desc="Support: Heals and buffs all nearby towers passively.">Support<br><span class="cost-disp" data-type="SUPPORT"></span></button>
+      <button id="btn_TRAPPER" onclick="setBuildType('TRAPPER')" data-hotkey="7" data-desc="[7] Trapper: Drops spikes on the track to damage passing enemies.">Trapper<br><span class="cost-disp" data-type="TRAPPER"></span></button>
+      <button id="btn_ENGIE" onclick="setBuildType('ENGIE')" data-hotkey="0" data-desc="[0] Engie: Deploys mini-drones to assist in attacking.">Engie<br><span class="cost-disp" data-type="ENGIE"></span></button>
+      <button id="btn_CHEMIST" onclick="setBuildType('CHEMIST')" data-hotkey="," data-desc=", Chemist: Throws chemical bottles that leave acid puddles.">Chemist<br><span class="cost-disp" data-type="CHEMIST"></span></button>
       <button id="btn_BUFF" onclick="setBuildType('BUFF')" data-hotkey="9" data-desc="[9] Buff: Increases the damage of nearby towers.">Buff<br><span class="cost-disp" data-type="BUFF"></span></button>
-      <button id="btn_ENGIE" onclick="setBuildType('ENGIE')" style="border-color:#FFC107;" data-hotkey="0" data-desc="[0] Engie: Deploys mini-drones to assist in attacking.">Engie<br><span class="cost-disp" data-type="ENGIE"></span></button>
-      <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" style="border-color:#E91E63;" data-hotkey="-" data-desc="[-] Railgun: Infinite range piercing beam. Needs a spotter.">Railgun<br><span class="cost-disp" data-type="RAILGUN"></span></button>
-      <button id="btn_FARM" onclick="setBuildType('FARM')" class="farm-btn" data-hotkey="=" data-desc="[=] Farm: Generates extra gold at the end of every wave.">Farm<br><span class="cost-disp" data-type="FARM"></span></button>
-      <button id="btn_SNARE" onclick="setBuildType('SNARE')" style="border-color:#9C27B0;" data-desc="Snare: Stuns enemies in place temporarily.">Snare<br><span class="cost-disp" data-type="SNARE"></span></button>
-      <button id="btn_MORTAR" onclick="setBuildType('MORTAR')" style="border-color:#FF6F00;" data-desc="Mortar: Lobs high-damage explosives with large splash.">Mortar<br><span class="cost-disp" data-type="MORTAR"></span></button>
-      <button id="btn_LASER" onclick="setBuildType('LASER')" style="border-color:#00FF00;" data-desc="Laser: Continuous fire laser beam that cuts through enemies.">Laser<br><span class="cost-disp" data-type="LASER"></span></button>
-      <button id="btn_SUPPORT" onclick="setBuildType('SUPPORT')" style="border-color:#2196F3;" data-desc="Support: Heals and buffs all nearby towers passively.">Support<br><span class="cost-disp" data-type="SUPPORT"></span></button>
-      <button id="btn_DECOY" onclick="setBuildType('DECOY')" style="border-color:#9E9E9E;" data-desc="Decoy: Attracts enemies, forcing them to pursue it.">Decoy<br><span class="cost-disp" data-type="DECOY"></span></button>
-      <button id="btn_TESLA" onclick="setBuildType('TESLA')" style="border-color:#00BCD4;" data-desc="Tesla: Chains lightning between nearby enemies.">Tesla<br><span class="cost-disp" data-type="TESLA"></span></button>
+      <button id="btn_MORTAR" onclick="setBuildType('MORTAR')" data-desc="Mortar: Lobs high-damage explosives with large splash.">Mortar<br><span class="cost-disp" data-type="MORTAR"></span></button>
+      <button id="btn_LASER" onclick="setBuildType('LASER')" data-desc="Laser: Continuous fire laser beam that cuts through enemies.">Laser<br><span class="cost-disp" data-type="LASER"></span></button>
+      <button id="btn_TESLA" onclick="setBuildType('TESLA')" data-desc="Tesla: Chains lightning between nearby enemies.">Tesla<br><span class="cost-disp" data-type="TESLA"></span></button>
+      <button id="btn_ACCEL" onclick="setBuildType('ACCEL')" data-hotkey="8" data-desc="[8] Accel: Speeds up the fire rate of nearby towers.">Accel<br><span class="cost-disp" data-type="ACCEL"></span></button>
+      <button id="btn_RAILGUN" onclick="setBuildType('RAILGUN')" data-hotkey="-" data-desc="[-] Railgun: Infinite range piercing beam. Needs a spotter.">Railgun<br><span class="cost-disp" data-type="RAILGUN"></span></button>
     </div>
   </div>
 

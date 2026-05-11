@@ -83,6 +83,8 @@ function parseStoredJson(key, fallback) {
 }
 
 let metaTech = { tokens: 0, discount: 0, lives: 0, farmInc: 0, unlockedEnemies: [] };
+const DAILY_CHALLENGE_TOKEN_MULTIPLIER = 0.3;
+const META_TECH_COST_MULTIPLIER = 8;
 function loadMeta() {
   metaTech = parseStoredJson('dd_meta', metaTech);
   if (!metaTech.unlockedEnemies) metaTech.unlockedEnemies = [];
@@ -99,7 +101,7 @@ function saveMeta() {
   updateMetaUI();
 }
 window.buyMeta = (type) => {
-    let cost = (metaTech[type] + 1) * 5;
+  let cost = (metaTech[type] + 1) * META_TECH_COST_MULTIPLIER;
     if (metaTech.tokens >= cost && metaTech[type] < 10) { metaTech.tokens -= cost; metaTech[type]++; saveMeta(); }
 };
 function updateMetaUI() {
@@ -107,7 +109,7 @@ function updateMetaUI() {
     ['discount', 'lives', 'farmInc'].forEach(t => {
         let elLvl = document.getElementById(`meta_${t}_lvl`), elCost = document.getElementById(`meta_${t}_cost`);
         if(elLvl) elLvl.innerText = metaTech[t];
-        if(elCost) elCost.innerText = metaTech[t] >= 10 ? "MAX" : (metaTech[t] + 1) * 5;
+    if(elCost) elCost.innerText = metaTech[t] >= 10 ? "MAX" : (metaTech[t] + 1) * META_TECH_COST_MULTIPLIER;
     });
     document.querySelectorAll('.cost-disp').forEach(el => { el.innerText = '$' + getTowerCost(el.dataset.type); });
 }
@@ -427,6 +429,180 @@ function spawnUpgradeEffect(x, y, color) {
   upgradeEffects.push(new UpgradeEffect(x, y, color || '#FFD700'));
 }
 
+const FARMER_AMMO_TYPES = {
+  BIRDSHOT: { label: 'Birdshot', cost: 0, pellets: 18, spread: 0.75, damageMult: 0.45, falloff: 0.88, speed: 8, color: '#FFF3A1', pelletSize: 1.8 },
+  BUCKSHOT: { label: 'Buckshot', cost: 120, pellets: 8, spread: 0.34, damageMult: 0.9, falloff: 1.0, speed: 9, color: '#FFD54F', pelletSize: 2.2 },
+  SLUGS: { label: 'Slugs', cost: 240, pellets: 1, spread: 0.03, damageMult: 3.2, falloff: 2.1, speed: 12, color: '#FFFFFF', pelletSize: 3.2 },
+  TARGET: { label: 'Target Load', cost: 90, pellets: 5, spread: 0.12, damageMult: 0.7, falloff: 0.72, speed: 10, color: '#D8F7FF', pelletSize: 2 },
+  BEANBAG: { label: 'Bean Bag', cost: 100, pellets: 1, spread: 0.08, damageMult: 0.2, falloff: 0.62, speed: 8, color: '#CDBA94', pelletSize: 3, slowTicks: 90, slowFactor: 0.45 },
+  RUBBER_BUCKSHOT: { label: 'Rubber Buckshot', cost: 135, pellets: 7, spread: 0.4, damageMult: 0.38, falloff: 0.78, speed: 9, color: '#FFB2A1', pelletSize: 2.1, slowTicks: 45, slowFactor: 0.72 },
+  RUBBER_SLUG: { label: 'Rubber Slug', cost: 170, pellets: 1, spread: 0.04, damageMult: 0.65, falloff: 1.7, speed: 11, color: '#FF8A80', pelletSize: 3, slowTicks: 60, slowFactor: 0.65 },
+  BREACHING: { label: 'Breaching', cost: 190, pellets: 1, spread: 0.02, damageMult: 1.8, falloff: 1.15, speed: 11, color: '#E0E0E0', pelletSize: 3.1, splashRadius: 28 },
+  FLASHBANG: { label: 'Flashbang', cost: 150, pellets: 1, spread: 0.08, damageMult: 0.25, falloff: 0.58, speed: 8, color: '#FFF5D6', pelletSize: 3, slowTicks: 120, slowFactor: 0.25 },
+  TRACERS: { label: 'Tracers', cost: 110, pellets: 6, spread: 0.34, damageMult: 0.9, falloff: 0.95, speed: 10, color: '#FF9A3D', pelletSize: 2.1, tracer: true },
+  PEPPER_BLAST: { label: 'Pepper Blast', cost: 140, pellets: 5, spread: 0.38, damageMult: 0.3, falloff: 0.68, speed: 9, color: '#B8E986', pelletSize: 2.1, slowTicks: 75, slowFactor: 0.55 },
+  DRAGON_BREATH: { label: 'Dragon\'s Breath', cost: 260, pellets: 10, spread: 0.62, damageMult: 0.28, falloff: 0.62, speed: 8, color: '#FF7043', pelletSize: 2.1, burnTicks: 120 },
+  FLECHETTES: { label: 'Flechettes', cost: 210, pellets: 14, spread: 0.48, damageMult: 0.42, falloff: 1.08, speed: 11, color: '#B0BEC5', pelletSize: 1.6, armorPen: 3 },
+  BOLO: { label: 'Bolo', cost: 160, pellets: 2, spread: 0.18, damageMult: 0.75, falloff: 0.86, speed: 9, color: '#C8B07A', pelletSize: 2.6, slowTicks: 110, slowFactor: 0.4 },
+  RHODESIAN_JUNGLE: { label: 'Rhodesian Jungle', cost: 200, pellets: 12, spread: 0.52, damageMult: 0.55, falloff: 0.86, speed: 9, color: '#F4E38A', pelletSize: 2.1 },
+  PIT_BULL: { label: 'Pit Bull', cost: 230, pellets: 5, spread: 0.28, damageMult: 1.2, falloff: 0.95, speed: 10, color: '#FFCC80', pelletSize: 2.5, splashRadius: 16 },
+  AP: { label: 'Armor Piercing', cost: 240, pellets: 4, spread: 0.16, damageMult: 1.05, falloff: 1.15, speed: 11, color: '#ECEFF1', pelletSize: 2.3, armorPen: 6 },
+  EXPLODING_SLUGS: { label: 'Exploding Slugs', cost: 280, pellets: 1, spread: 0.04, damageMult: 1.4, falloff: 1.2, speed: 12, color: '#FFD180', pelletSize: 3.2, splashRadius: 48 },
+  FRAG_SLUGS: { label: 'Frag Slugs', cost: 260, pellets: 1, spread: 0.05, damageMult: 1.2, falloff: 1.1, speed: 12, color: '#F5F5F5', pelletSize: 3, splashRadius: 34 },
+  KITCHEN_SINK: { label: 'Kitchen Sink', cost: 320, pellets: 14, spread: 0.58, damageMult: 0.7, falloff: 0.82, speed: 9, color: '#FFDEAD', pelletSize: 2.2, splashRadius: 14 },
+  ROCK_SALT: { label: 'Rock Salt', cost: 70, pellets: 20, spread: 0.7, damageMult: 0.12, falloff: 0.62, speed: 8, color: '#EAEAEA', pelletSize: 1.6, slowTicks: 35, slowFactor: 0.8 }
+};
+
+const FARMER_AMMO_ALIASES = {
+  MODIFIED: 'BIRDSHOT',
+  FULL: 'BUCKSHOT',
+  IMPROVED: 'BIRDSHOT'
+};
+
+const FARMER_DEFAULT_AMMO = 'BIRDSHOT';
+
+function normalizeFarmerAmmoType(type) {
+  if (type && FARMER_AMMO_TYPES[type]) return type;
+  if (type && FARMER_AMMO_ALIASES[type]) return FARMER_AMMO_ALIASES[type];
+  return FARMER_DEFAULT_AMMO;
+}
+
+function getFarmerAmmoCost(type) {
+  const ammo = FARMER_AMMO_TYPES[normalizeFarmerAmmoType(type)] || FARMER_AMMO_TYPES[BIRDSHOT];
+  return ammo ? (ammo.cost || 0) : 0;
+}
+
+let acidPools = [];
+let farmerPellets = [];
+let minigunPellets = [];
+
+class FarmerPellet {
+  constructor(x, y, tx, ty, color = '#FFD54F', size = 2) {
+    this.x = x;
+    this.y = y;
+    this.tx = tx;
+    this.ty = ty;
+    this.color = color;
+    this.life = 14;
+    const dx = tx - x;
+    const dy = ty - y;
+    const dist = Math.hypot(dx, dy) || 1;
+    this.vx = (dx / dist) * 9;
+    this.vy = (dy / dist) * 9;
+    this.size = size;
+  }
+  update() {
+    const dx = this.tx - this.x;
+    const dy = this.ty - this.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1) {
+      this.x += this.vx;
+      this.y += this.vy;
+    } else {
+      this.x = this.tx;
+      this.y = this.ty;
+    }
+    this.life--;
+  }
+  draw() {
+    if (this.life <= 0) return;
+    const alpha = Math.max(0, this.life / 10);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+class AcidPool {
+  constructor(x, y, radius, damagePerTick, life, sourceTower) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.damagePerTick = damagePerTick;
+    this.life = life;
+    this.sourceTower = sourceTower;
+    this.tickTimer = 0;
+  }
+  update() {
+    if (this.life <= 0) return;
+    this.life--;
+    this.tickTimer++;
+    if (this.tickTimer < 15) return;
+    this.tickTimer = 0;
+    enemies.forEach(enemy => {
+      if (!enemy.alive) return;
+      if ((enemy.x - this.x) ** 2 + (enemy.y - this.y) ** 2 <= this.radius * this.radius) {
+        if (this.sourceTower) this.sourceTower.damageDealt += enemy.takeDamage(this.damagePerTick, 'CHEMIST', this.sourceTower);
+      }
+    });
+  }
+  draw() {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.08, Math.min(0.35, this.life / 240));
+    ctx.fillStyle = 'rgba(0, 200, 83, 0.35)';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+window.cycleFarmerAmmo = () => {
+  if (!selectedTower || selectedTower.type !== 'FARMER') return;
+  if (selectedTower.ammoLocked) return;
+  const modes = Object.keys(FARMER_AMMO_TYPES);
+  const current = modes.indexOf(normalizeFarmerAmmoType(selectedTower.ammoType || FARMER_DEFAULT_AMMO));
+  selectedTower.ammoType = modes[(current + 1) % modes.length];
+  updateSelectionUI();
+};
+
+window.cycleFarmerChoke = () => window.cycleFarmerAmmo();
+
+window.setFarmerAmmo = (type) => {
+  if (!selectedTower || selectedTower.type !== 'FARMER') return;
+  const nextType = normalizeFarmerAmmoType(type);
+  if (!FARMER_AMMO_TYPES[nextType]) return;
+  if (selectedTower.ammoLocked && selectedTower.ammoType !== nextType) return;
+  selectedTower.ammoType = nextType;
+  updateSelectionUI();
+};
+
+window.buyFarmerAmmo = (type) => {
+  if (!selectedTower || selectedTower.type !== 'FARMER') return;
+  const nextType = normalizeFarmerAmmoType(type);
+  const ammo = FARMER_AMMO_TYPES[nextType];
+  if (!ammo) return;
+  if (selectedTower.ammoLocked && selectedTower.ammoType !== nextType) return;
+  if (nextType === selectedTower.ammoType) {
+    selectedTower.ammoLocked = true;
+    updateSelectionUI();
+    return;
+  }
+  const cost = ammo.cost || 0;
+  if (gameMode !== 'SANDBOX' && gold < cost) {
+    alert('Not enough gold for that ammo type.');
+    return;
+  }
+  if (gameMode !== 'SANDBOX') gold -= cost;
+  selectedTower.ammoType = nextType;
+  selectedTower.ammoLocked = true;
+  updateSelectionUI();
+  updateMetaUI();
+};
+
+window.cycleFarmerChokeType = () => {
+  if (!selectedTower || selectedTower.type !== 'FARMER') return;
+  const modes = ['MODIFIED', 'FULL', 'IMPROVED'];
+  const current = modes.indexOf(selectedTower.chokeType || 'MODIFIED');
+  selectedTower.chokeType = modes[(current + 1) % modes.length];
+  updateSelectionUI();
+};
+
 const TOWER_TYPES = {
   PISTOL:  { color: '#4CAF50', range: 200, reload: 25,  damage: 4,    baseCost: 100,  bullet: 'orange' },
   SNIPER:  { color: '#2196F3', range: 350, reload: 110, damage: 12,   baseCost: 300, bullet: 'white'  },
@@ -440,6 +616,9 @@ const TOWER_TYPES = {
   ENGIE:   { color: '#FFC107', range: 160, reload: 60,  damage: 6,    baseCost: 600, isEngie: true,     bullet: '#FFC107', maxConstructs: 1 },
   RAILGUN: { color: '#E91E63', range: 400, reload: 150, damage: 40,   baseCost: 3000, bullet: '#00FFFF', isRail: true },
   FARM:    { color: '#8BC34A', range: 0,   reload: 0,   damage: 0,    baseCost: 250, isFarm: true,      baseIncome: 50 },
+  FARMER:  { color: '#7CB342', range: 180, reload: 45,  damage: 10,   baseCost: 300, bullet: '#FFD54F', isFarmer: true },
+  CHEMIST: { color: '#00C853', range: 210, reload: 70,  damage: 5,    baseCost: 650, bullet: '#7CFF8A', isChemist: true },
+  SCOUT:   { color: '#42A5F5', range: 220, reload: 0,   damage: 0,    baseCost: 450, isScout: true },
   SNARE:   { color: '#9C27B0', range: 120, reload: 80,  damage: 0,    baseCost: 350, isSnare: true },
   MORTAR:  { color: '#FF6F00', range: 250, reload: 120, damage: 25,   baseCost: 800, bullet: 'gold',    splashRadius: 100, isMortar: true },
   LASER:   { color: '#00FF00', range: 200, reload: 50,  damage: 8,    baseCost: 900, isLaser: true,     duration: 120 },
@@ -447,6 +626,52 @@ const TOWER_TYPES = {
   DECOY:   { color: '#9E9E9E', range: 150, reload: 0,   damage: 0,    baseCost: 200, isDecoy: true },
   TESLA:   { color: '#00BCD4', range: 220, reload: 60,  damage: 6,    baseCost: 1100, isTesla: true }
 };
+
+function hexToRgb(hex) {
+  if (!hex || typeof hex !== 'string') return null;
+  let h = hex.trim();
+  if (!h.startsWith('#')) return null;
+  h = h.slice(1);
+  if (h.length === 3) h = h.split('').map(ch => ch + ch).join('');
+  if (h.length !== 6) return null;
+  const n = parseInt(h, 16);
+  if (Number.isNaN(n)) return null;
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbToHex(r, g, b) {
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  return `#${clamp(r).toString(16).padStart(2, '0')}${clamp(g).toString(16).padStart(2, '0')}${clamp(b).toString(16).padStart(2, '0')}`;
+}
+
+function shadeHex(hex, factor) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return rgbToHex(rgb.r * factor, rgb.g * factor, rgb.b * factor);
+}
+
+function getTowerButtonColor(type) {
+  return (type && TOWER_TYPES[type] && TOWER_TYPES[type].color) ? TOWER_TYPES[type].color : '#FFFFFF';
+}
+
+function getTowerButtonTextColor(bgHex) {
+  const rgb = hexToRgb(bgHex);
+  if (!rgb) return '#FFFFFF';
+  // Relative luminance approximation for readable label text.
+  const luminance = (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+  return luminance > 0.62 ? '#111111' : '#FFFFFF';
+}
+
+function applyTowerButtonColors() {
+  Object.keys(TOWER_TYPES).forEach(type => {
+    const btn = document.getElementById('btn_' + type);
+    if (!btn) return;
+    const bg = getTowerButtonColor(type);
+    btn.style.setProperty('--tower-btn-bg', bg);
+    btn.style.setProperty('--tower-btn-border', shadeHex(bg, 0.72));
+    btn.style.setProperty('--tower-btn-text', getTowerButtonTextColor(bg));
+  });
+}
 
 function getReverseChameleonWeakTower() {
   const allowed = Object.keys(TOWER_TYPES).filter(type => !['BUFF', 'FARM', 'SUPPORT', 'DECOY'].includes(type));
@@ -471,12 +696,13 @@ const ENEMY_TYPES = {
   SPEEDDEM:  { color: '#FF1744', speed: 3.0, hp: 5,   armor: 0, reward: 25 },
   REGEN:     { color: '#76FF03', speed: 0.77, hp: 25,  armor: 1, reward: 40, isRegen: true },
   SWARM:     { color: '#FF9800', speed: 1.1, hp: 8,   armor: 0, reward: 12, isSwarm: true, spawns: 'SPEEDDEM', spawnCount: 3 },
-  Achillies: { color: '#FFFFFF', speed: 0.85, hp: 35, armor: 2, reward: 80, isReverseChameleon: true }
+  Achillies: { color: '#FFFFFF', speed: 0.85, hp: 35, armor: 2, reward: 80, isReverseChameleon: true },
+  DESPERATOR: { color: '#FF4081', speed: 0.9, hp: 40, armor: 0, reward: 30 }
 };
 
-const WAVE_COLORS = { NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', SHIELD: '#00BCD4', CHAMELEON: '#E91E63', SLIME: '#8BC34A', BOSS: '#FF0000', ARMORED: '#4A4A4A', INVISIBLE: '#CCCCCC', SPEEDDEM: '#FF1744', REGEN: '#76FF03', SWARM: '#FF9800', Achillies: '#FFFFFF' };
+const WAVE_COLORS = { NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', SHIELD: '#00BCD4', CHAMELEON: '#E91E63', SLIME: '#8BC34A', BOSS: '#FF0000', ARMORED: '#4A4A4A', INVISIBLE: '#CCCCCC', SPEEDDEM: '#FF1744', REGEN: '#76FF03', SWARM: '#FF9800', DESPERATOR: '#FF4081', Achillies: '#FFFFFF' };
 
-let gold=10000, lives=20, waveNumber=0, buildType=null, selectedTower=null, selectedEnemy=null, enemiesLeftToSpawn=0, spawnTimer=0, waveCooldown=0;
+let gold=300, lives=20, waveNumber=0, buildType=null, selectedTower=null, selectedEnemy=null, enemiesLeftToSpawn=0, spawnTimer=0, waveCooldown=0;
 let isPaused=true, isWaveActive=false, isGameOver=false, gameSpeed=1, hoverGx=-1, hoverGy=-1, frameCount=0;
 let autoStartWaves = false;
 window.toggleAutoStart = (val) => autoStartWaves = val;
@@ -569,7 +795,7 @@ function tryUnlockAdminMode() {
 }
 
 // NEW: Game modes and features
-let gameMode = 'STANDARD'; // STANDARD, ENDLESS
+let gameMode = 'STANDARD'; // STANDARD, ENDLESS, SANDBOX
 let gameDifficulty = 'NORMAL'; // EASY, NORMAL, HARD
 let achievements = {
   wave25: false, wave50: false, noTowers: false, allTowers: false,
@@ -624,7 +850,7 @@ const recalculateAllPaths = () => enemies.forEach(e => { let p = findPath(Math.f
 
 function getWaveComposition(wNum) {
   if (wNum % 10 === 0 && wNum > 0) return { BOSS: 1 };
-  const comp = { NORMAL: 0, RUNNER: 0, TANK: 0, FLYER: 0, GHOST: 0, HEALER: 0, CARRIER: 0, SHIELD: 0, CHAMELEON: 0, SLIME: 0, ARMORED: 0, INVISIBLE: 0, SPEEDDEM: 0, REGEN: 0, SWARM: 0, REVERSECHAMELEON: 0 };
+  const comp = { NORMAL: 0, RUNNER: 0, TANK: 0, FLYER: 0, GHOST: 0, HEALER: 0, CARRIER: 0, SHIELD: 0, CHAMELEON: 0, SLIME: 0, ARMORED: 0, INVISIBLE: 0, SPEEDDEM: 0, REGEN: 0, SWARM: 0, REVERSECHAMELEON: 0, DESPERATOR: 0 };
   let difficultylevel = gameDifficulty === 'HARD' ? 1.5 : (gameDifficulty === 'EASY' ? 0.5 : 1);
   let count = Math.floor((5+wNum) * difficultylevel);
 
@@ -633,6 +859,7 @@ function getWaveComposition(wNum) {
     if (wNum>15&&r>0.85) comp.SWARM++;
     else if(wNum>12&&r>0.8) comp.CARRIER++;
     else if(wNum>10&&r>0.75) comp.CHAMELEON++;
+    else if(wNum>12&&r>0.82) comp.DESPERATOR++;
     else if(wNum>14&&r>0.72) comp.REVERSECHAMELEON++;
     else if(wNum>18&&r>0.7) comp.ARMORED++;
     else if(wNum>20&&r>0.65) comp.INVISIBLE++;
@@ -678,10 +905,21 @@ function updateSelectionUI() {
   const rStr = (t.type==='SNIPER'||t.upgrades.radar>0) ? `<span style="color:#00E676;">Active</span>` : `<span style="color:#aaa;">None</span>`;
 
   let lvlMax = isF ? 5 : 20;
+  const farmerAmmoType = normalizeFarmerAmmoType(t.ammoType || FARMER_DEFAULT_AMMO);
+  const farmerAmmo = FARMER_AMMO_TYPES[farmerAmmoType] || FARMER_AMMO_TYPES.MODIFIED;
+  const farmerAmmoSelector = t.type === 'FARMER' ? `<div style="display:flex;gap:4px;margin-bottom:4px;"><select id="farmerAmmoSelect" ${t.ammoLocked ? 'disabled' : ''} style="flex:1;background:#222;color:white;padding:4px;border:1px solid #555;">
+    ${Object.entries(FARMER_AMMO_TYPES).map(([key, ammo]) => `<option value="${key}" ${farmerAmmoType===key?'selected':''}>${ammo.label} (${ammo.cost ? '$' + ammo.cost : 'Free'})</option>`).join('')}
+  </select><button onclick="buyFarmerAmmo(document.getElementById('farmerAmmoSelect').value)" style="flex:1;" ${t.ammoLocked ? 'disabled' : ''} data-desc="Buy and equip one ammo type for this Farmer">${t.ammoLocked ? 'Ammo Locked' : 'Buy Ammo'}</button></div><div style="font-size:11px;color:#aaa;margin-bottom:4px;">Choose one ammo type for this Farmer. Birdshot is the default.</div>` : '';
+  const farmerChokeSelector = t.type === 'FARMER' ? `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="cycleFarmerChokeType()" style="width:100%;" data-desc="Cycle Farmer choke types">Choke: ${t.chokeType || 'MODIFIED'}</button></div>` : '';
 
   let h = `<h3 style="border-bottom:2px solid ${t.color};padding-bottom:5px;">${t.type}</h3>${row('Level:', t.level + ` / ${lvlMax}`)}${row('Sell:', `$${sellVal}`, '#ffd700')}<br>`;
 
-  if (isF) h += row('Income:', `+$${t.income}/wave`, '#FFD700') + row('Total Gen:', `$${t.totalGenerated}`, '#FFD700') + row('Limit:', `${towers.filter(x=>x.isFarm).length} / 8`);
+  if (isF) h += row('Income:', `+$${t.income}/wave`, '#FFD700') + row('Total Gen:', `$${t.totalGenerated}`, '#FFD700') + row('Limit:', `${towers.filter(x=>x.isFarm).length} / 8`) + `<div style="font-size:11px; color:#aaa; margin-top:5px;">No upgrades. Build a Farmer nearby to boost it.</div>`;
+  else if (t.type === 'FARMER') {
+    h += row('Ammo:', farmerAmmo.label, '#FFD54F') + row('Pellets:', farmerAmmo.pellets, '#FFD54F') + row('Choke:', t.chokeType || 'MODIFIED', '#FFD54F') + row('Farm Boost:', 'Nearby farms produce more', '#FFD54F') + row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white');
+  }
+  else if (t.type === 'CHEMIST') h += row('Acid:', 'Bottle + puddle', '#00C853') + row('Damage:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white');
+  else if (t.type === 'SCOUT') h += row('Aura:', t.range.toFixed(1), '#42A5F5') + row('Role:', 'Extends nearby range', '#42A5F5') + row('Railgun:', 'Acts as spotter', '#42A5F5');
   else if (isB) h += row('Aura Radius:', t.range.toFixed(1)) + row('Buffing:', 'All Stats', '#FFD700') + row('Buff Intensity:', t.buffIntensity, t.buffIntensity>0?'#FFD700':'white') + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Income: +$${t.income}/wave | No attack</div>`;
   else if (isE) h += row('Constructs:', `${t.constructs.length} / ${t.maxConstructs}`, '#FFC107') + row('C. Dmg:', t.damage.toFixed(1), t.damage>t.baseDamage?'#FFD700':'white') + row('C. Rng:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('C. Rate:', `${(60/t.reloadTime).toFixed(1)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Buff Dur:', '5s', '#FFC107') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + row('Total Dmg:', Math.floor(t.damageDealt), '#FFD700');
   else if (isI) h += row('Range:', t.range.toFixed(1), t.range>t.baseRange?'#FFD700':'white') + row('Tick Rate:', `${(60/t.reloadTime).toFixed(2)}/s`, t.reloadTime<t.baseReload?'#FFD700':'white') + row('Freeze Radius:', t.freezeRadius, t.freezeRadius>0?'#FFD700':'white') + row('Slow Lvl:', t.slowLevel, '#29b6f6') + row('Sensors:', rStr) + row('Anti-Air:', canAir, airCol) + `<div style="font-size:11px; color:#aaa; margin-top:5px;">Freezes enemies briefly on hit</div>`;
@@ -706,10 +944,16 @@ function updateSelectionUI() {
 
   if (t.level >= lvlMax) {
       h += `<button style="width:100%; opacity:0.5; padding:8px 0; margin-bottom:4px; font-weight:bold;" disabled>MAX LEVEL (${lvlMax})</button>`;
+      if (t.type === 'FARMER') h += farmerChokeSelector;
   } else {
       let rB = (!isF && !isB) ? (t.type==='SNIPER' ? `<button class="radar-btn" style="flex:1;opacity:0.5;" data-desc="Native ability: Detects camouflaged units">Radar (Native)</button>` : (t.upgrades.radar>0 ? `<button class="radar-btn" style="flex:1;opacity:0.5;" data-desc="Unlocked: Detects camo units">Radar (MAX)</button>` : `<button class="radar-btn" onclick="upgradeTower('radar')" style="flex:1;" data-desc="Enable sensor mode to detect camouflaged enemies">Radar $150</button>`)) : '';
 
       if (isF) h += `<button class="farm-btn" onclick="upgradeTower('farm')" style="margin-bottom:4px;" data-desc="Increases income by 10 per upgrade level">Upgrade Yield $${FARM_UPGRADE_COSTS[t.level]}</button>`;
+        else if (t.type === 'FARMER') {
+          h += farmerAmmoSelector + `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1;" data-desc="Farmer shotgun damage increases with upgrades">Damage $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1;" data-desc="Increase Farmer reach and farm aura">Range $${t.upgrades.range*25}</button></div>${farmerChokeSelector}`;
+        }
+      else if (t.type === 'CHEMIST') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Increase chemical damage and acid tick damage">Damage $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Increase throw distance and acid coverage">Range $${t.upgrades.range*25}</button></div>`;
+      else if (t.type === 'SCOUT') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1" data-desc="Increase the range bonus radius">Range $${t.upgrades.range*25}</button></div>`;
       else if (isB) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('buffIntensity')" style="flex:1" data-desc="Boost all nearby tower stats by 15% per level (speed, dmg, range)">Intensity $${(t.buffIntensity+1)*35}</button></div>`;
       else if (isE) h += `<button onclick="upgradeTower('amount')" style="margin-bottom:4px;" data-desc="Spawn a new construct satellite (max ${t.maxConstructs})">Add Construct $${t.upgrades.amount*200}</button><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate of constructs: 2% faster per level">Fire Rate $${t.upgrades.speed*30}</button><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Construct damage: Increase by 20% per level">Damage $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('range')" style="flex:1" data-desc="Construct range: Increase by 5% per level">Range $${t.upgrades.range*25}</button>${rB}</div>`;
       else if (isI) h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('freezeRadius')" style="flex:1" data-desc="Expand freeze effect radius by 1000 pixels per level">Freeze Radius $${(t.freezeRadius+1)*30}</button><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire frequency: 2% faster per level">Tick Rate $${t.upgrades.speed*30}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;">${rB}<button class="ice-btn" onclick="upgradeTower('slow')" style="flex:1" data-desc="Strength of freeze effect: Increases duration by 10 ticks per level">Slow Pwr $${(t.slowLevel+1)*40}</button></div>`;
@@ -730,9 +974,9 @@ function updateSelectionUI() {
           // Generic towers with tower-specific upgrades
           if (t.type === 'PISTOL') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('piercing')" style="flex:1" data-desc="Projectiles penetrate +1 enemy per level">Piercing $${(t.piercing+1)*40}</button><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Bullet damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate: 2% faster per level">Fire Rate $${t.upgrades.speed*30}</button>${rB}</div>`;
           else if (t.type === 'SNIPER') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('armorPen')" style="flex:1" data-desc="Reduce target armor by 0.5 per level">Armor Pen $${(t.armorPen+1)*50}</button><button onclick="upgradeTower('critChance')" style="flex:1" data-desc="5% crit chance per level (2x damage on crit)">Crit $${(t.critChance+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Shot power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Firing range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
-          else if (t.type === 'MINIGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('spreadReduction')" style="flex:1" data-desc="Reduce accuracy spread (not yet active)">Spread $${(t.spreadReduction+1)*35}</button><button onclick="upgradeTower('ammoCapacity')" style="flex:1" data-desc="Fire rate boost: Up to 50% faster at 10 levels">Ammo $${(t.ammoCapacity+1)*35}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Bullet damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'MINIGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('spreadReduction')" style="flex:1" data-desc="Tighten bullet spread for better accuracy">Spread $${(t.spreadReduction+1)*35}</button><button onclick="upgradeTower('ammoCapacity')" style="flex:1" data-desc="Fire rate boost: Up to 50% faster at 10 levels">Ammo $${(t.ammoCapacity+1)*35}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Bullet damage: 25% increase per level">Dmg $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
           else if (t.type === 'BOMB') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('bounceCount')" style="flex:1" data-desc="Create +1 bouncing sub-projectiles per level">Bounces $${(t.bounceCount+1)*50}</button><button onclick="upgradeTower('fragmentation')" style="flex:1" data-desc="Spawn +1 shrapnel projectiles per level">Fragmentation $${(t.fragmentation+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Blast power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
-          else if (t.type === 'FLAME') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('burnDuration')" style="flex:1" data-desc="Extend melt effect by +50 ticks per level">Burn Dur $${(t.burnDuration+1)*40}</button><button onclick="upgradeTower('melt')" style="flex:1" data-desc="Melt damage per tick: +10% per level">Melt Pwr $${(t.meltLevel+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Flame power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
+          else if (t.type === 'FLAME') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('burnDuration')" style="flex:1" data-desc="Extend melt effect by +50 ticks per level">Burn Dur $${(t.burnDuration+1)*40}</button><button onclick="upgradeTower('melt')" style="flex:1" data-desc="Melt damage per tick: +10% per level">Melt Pwr $${(t.meltLevel+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Flame power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button disabled style="flex:1;opacity:0.55;" data-desc="Flame uses a fixed cone and does not gain range">Range Locked</button></div>`;
           else if (t.type === 'RAILGUN') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('beamWidth')" style="flex:1" data-desc="Increase beam width by +5 pixels per level">Beam Width $${(t.beamWidth+1)*45}</button><button onclick="upgradeTower('piercingPower')" style="flex:1" data-desc="Beam hits +1 additional target per level">Pierce $${(t.piercingPower+1)*60}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Beam damage: 25% increase per level">Power $${t.upgrades.damage*40}</button></div>`;
           else if (t.type === 'SNARE') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('markDuration')" style="flex:1" data-desc="Stun duration: +5 ticks (0.083 sec) per level">Mark Dur $${(t.markDuration+1)*40}</button><button onclick="upgradeTower('markCapacity')" style="flex:1" data-desc="Can mark +1 enemy per level (base: 6)">Capacity $${(t.markCapacity+1)*45}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('speed')" style="flex:1" data-desc="Fire rate: 2% faster per level">Rate $${t.upgrades.speed*30}</button>${rB}</div>`;
           else if (t.type === 'MORTAR') h += `<div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('bounceCount')" style="flex:1" data-desc="Create +1 bouncing sub-projectiles per level">Bounces $${(t.bounceCount+1)*50}</button><button onclick="upgradeTower('fragmentation')" style="flex:1" data-desc="Spawn +1 shrapnel fragments per level">Frags $${(t.fragmentation+1)*50}</button></div><div style="display:flex;gap:4px;margin-bottom:4px;"><button onclick="upgradeTower('damage')" style="flex:1" data-desc="Explosion power: 25% increase per level">Power $${t.upgrades.damage*40}</button><button onclick="upgradeTower('range')" style="flex:1" data-desc="Range: 5% increase per level">Range $${t.upgrades.range*25}</button></div>`;
@@ -788,10 +1032,15 @@ class Enemy {
     this.decoyTicks = 0;
     this.decoyIgnoreTicks = 0;
     this.decoyed = false; // once true, enemy will no longer be attracted to decoys
-    this.weakTo = this.isReverseChameleon ? getReverseChameleonWeakTower() : null;
+    this.weakTo = null; // Start vulnerable to all; locks to first tower type that hits
   }
   takeDamage(dmg, sourceTowerType, sourceTower=null) {
-    if (this.isReverseChameleon && sourceTowerType !== this.weakTo) return 0;
+    if (this.isReverseChameleon) {
+      if (this.weakTo === null) {
+        this.weakTo = sourceTowerType; // Lock to first tower type that hits
+      }
+      if (sourceTowerType !== this.weakTo) return 0; // Only takeable by the first tower type that hit
+    }
     if (this.isChameleon && this.immuneTimer > 0 && this.immuneTo === sourceTowerType) return 0;
 
     // Don't take damage if already dead (prevents double-spawning)
@@ -867,6 +1116,14 @@ class Enemy {
     if (this.slowTicks > 0) this.slowTicks--;
     if (this.meltTicks > 0) this.meltTicks--;
     if (this.immuneTimer > 0) this.immuneTimer--;
+
+    // Special behavior: Desperator gains speed as it loses health
+    if (this.type === 'DESPERATOR') {
+      const missingRatio = 1 - (Math.max(0.0001, this.health) / Math.max(1, this.maxHealth));
+      // Scale up to +120% speed when near death; is affected by slow/melt adjustments above
+      const extra = 1 + (missingRatio * 1.2);
+      this.speed = this.speed * extra;
+    }
 
     // REGEN: Heal over time
     if (this.isRegen && frameCount % 30 === 0) {
@@ -967,16 +1224,23 @@ class Enemy {
     if (gameSettings.flashing && this.meltTicks > 0) { ctx.strokeStyle = '#ff1744'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, 17, 0, Math.PI * 2); ctx.stroke(); }
     if (gameSettings.flashing && this.slowTicks > 0) { ctx.strokeStyle = '#29b6f6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, this.type === 'BOSS' ? 22 : 17, 0, Math.PI * 2); ctx.stroke(); }
     if (this.isReverseChameleon) {
-      const weakColor = this.weakTo && TOWER_TYPES[this.weakTo] ? TOWER_TYPES[this.weakTo].color : '#FFFFFF';
-      ctx.strokeStyle = weakColor;
+      if (this.weakTo === null) {
+        ctx.strokeStyle = '#00BCD4'; // Cyan for "vulnerable to all"
+      } else {
+        ctx.strokeStyle = getTowerButtonColor(this.weakTo); // Tower color for locked weakness
+      }
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.type === 'BOSS' ? 24 : 18, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = weakColor;
+      ctx.fillStyle = ctx.strokeStyle;
       ctx.font = 'bold 9px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(this.weakTo ? this.weakTo[0] : '?', this.x, this.y + 3);
+      if (this.weakTo === null) {
+        ctx.fillText('*', this.x, this.y + 3); // Show * for unlocked/vulnerable to all
+      } else {
+        ctx.fillText(this.weakTo[0], this.x, this.y + 3); // Show tower letter when locked
+      }
       ctx.textAlign = 'left';
     }
     ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(this.x - 16, this.y - 24, 32, 5); ctx.fillStyle = 'red'; ctx.fillRect(this.x - 16, this.y - 24, 32, 5); ctx.fillStyle = 'lime'; ctx.fillRect(this.x - 16, this.y - 24, (this.health / this.maxHealth) * 32, 5);
@@ -1048,14 +1312,17 @@ class Tower {
     this.beamDuration = 0;
     this.meltLevel = 0; this.slowLevel = 0; this.damageDealt = 0;
     this.fireTimer = 0; this.rechargeTimer = 0; this.currentTargets = [];
+    this.flameConeAngle = -Math.PI / 2; this.flamePulse = 0;
     this.isRail = !!TOWER_TYPES[typeKey].isRail; this.isFarm = !!TOWER_TYPES[typeKey].isFarm; this.isEngie = !!TOWER_TYPES[typeKey].isEngie; this.isTrapper = !!TOWER_TYPES[typeKey].isTrapper; this.hasSpotter = false;
     this.isSnare = !!TOWER_TYPES[typeKey].isSnare; this.isLaser = !!TOWER_TYPES[typeKey].isLaser; this.isSupport = !!TOWER_TYPES[typeKey].isSupport; this.isDecoy = !!TOWER_TYPES[typeKey].isDecoy; this.isMortar = !!TOWER_TYPES[typeKey].isMortar; this.isTesla = !!TOWER_TYPES[typeKey].isTesla;
-    this.income = TOWER_TYPES[typeKey].baseIncome || 0; this.totalGenerated = 0;
+    this.isFarmer = !!TOWER_TYPES[typeKey].isFarmer; this.isChemist = !!TOWER_TYPES[typeKey].isChemist; this.isScout = !!TOWER_TYPES[typeKey].isScout;
+    this.baseIncome = TOWER_TYPES[typeKey].baseIncome || 0; this.income = this.baseIncome; this.totalGenerated = 0;
     this.totalSpent = getTowerCost(typeKey);
     this.railFireTimer = 0; this.beamEndX = 0; this.beamEndY = 0;
     this.laserBeamTimer = 0; this.laserBeamEndX = 0; this.laserBeamEndY = 0;
     this.teslaArcs = [];
     this.maxConstructs = TOWER_TYPES[typeKey].maxConstructs || 0; this.constructs = []; this.orbitAngle = 0;
+    if (this.isFarmer) { this.ammoType = 'MODIFIED'; this.chokeType = 'MODIFIED'; }
     // DECOY tower health
     if (this.isDecoy) {
       this.maxHealth = 5 + this.decoyHealth * 2;
@@ -1087,27 +1354,45 @@ class Tower {
     }
 
     allTowers.forEach(t => {
-      if (TOWER_TYPES[t.type].isBuff) {
-        const distSq = (t.x-this.x)**2 + (t.y-this.y)**2;
+      const distSq = (t.x-this.x)**2 + (t.y-this.y)**2;
 
-        if (this.isRail && distSq <= 240*240) {
-            this.hasSpotter = true;
-            this.spotterLink = t;
-        }
-
+      if (t.type === 'BUFF') {
         if (distSq <= t.range*t.range) {
-            if (!hasAppliedStatsBuff) {
-                let intensityMult = 1 + (t.buffIntensity * 0.15); // +15% per buff intensity level
-                speedMod *= Math.max(0.4, 0.95 - (t.upgrades.speed  * 0.02)) * intensityMult;
-                dmgMod   *= (1.05 + (t.upgrades.speed * 0.1)) * intensityMult;
-                rangeMod *= (1.10 + (t.upgrades.range * 0.05)) * intensityMult;
-                hasAppliedStatsBuff = true;
-            }
+          if (!hasAppliedStatsBuff) {
+            let intensityMult = 1 + (t.buffIntensity * 0.15); // +15% per buff intensity level
+            speedMod *= Math.max(0.4, 0.95 - (t.upgrades.speed  * 0.02)) * intensityMult;
+            dmgMod   *= (1.05 + (t.upgrades.speed * 0.1)) * intensityMult;
+            rangeMod *= (1.10 + (t.upgrades.range * 0.05)) * intensityMult;
+            hasAppliedStatsBuff = true;
+          }
+        }
+      } else if (t.type === 'SCOUT') {
+        if (this.isRail && distSq <= 240*240) {
+          this.hasSpotter = true;
+          this.spotterLink = t;
+        }
+        if (distSq <= t.range*t.range) {
+          rangeMod *= 1.12 + (t.upgrades.range * 0.04);
         }
       }
     });
 
-    if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
+    if (this.isFarm) {
+      let bestBonus = 0;
+      allTowers.forEach(t => {
+        if (t.type !== 'FARMER') return;
+        const distSq = (t.x-this.x)**2 + (t.y-this.y)**2;
+        if (distSq <= t.range*t.range) {
+          const ammo = FARMER_AMMO_TYPES[normalizeFarmerAmmoType(t.ammoType || t.chokeType || 'MODIFIED')] || FARMER_AMMO_TYPES.MODIFIED;
+          const bonus = 0.25 + (ammo.pellets * 0.03);
+          if (bonus > bestBonus) bestBonus = bonus;
+        }
+      });
+      this.income = Math.max(0, Math.floor(this.baseIncome * (1 + bestBonus)));
+      return;
+    }
+
+    if (TOWER_TYPES[this.type].isBuff) return;
     this.reloadTime *= speedMod; this.damage *= dmgMod; this.range *= rangeMod;
   }
 
@@ -1121,7 +1406,7 @@ class Tower {
   }
   update() {
     if (this.engieBuffTimer > 0) this.engieBuffTimer--;
-    if (TOWER_TYPES[this.type].isBuff || this.isFarm) return;
+    if (TOWER_TYPES[this.type].isBuff || this.isScout) return;
     if (this.isRail && !this.hasSpotter) return;
 
     let effectiveRange = this.range;
@@ -1180,6 +1465,40 @@ class Tower {
         
         playSFX('shoot');
         this.timer = 0;
+      }
+      return;
+    }
+
+    if (this.type === 'FLAME') {
+      const coneRange = effectiveRange;
+      const coneHalfAngle = Math.PI / 5;
+      const coneAngle = this.flameConeAngle != null ? this.flameConeAngle : -Math.PI / 2;
+      const flameDamage = Math.max(0.5, this.damage);
+      let inRange = enemies.filter(e => {
+        if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false;
+        const dx = e.x - this.x;
+        const dy = e.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > coneRange) return false;
+        const angleToEnemy = Math.atan2(dy, dx);
+        let delta = angleToEnemy - coneAngle;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        return Math.abs(delta) <= coneHalfAngle;
+      });
+
+      if (inRange.length > 0) {
+        inRange.sort((a, b) => distSq(a) - distSq(b));
+        const target = inRange[0];
+        this.flameConeAngle = Math.atan2(target.y - this.y, target.x - this.x);
+        this.damageDealt += target.takeDamage(flameDamage, this.type, this);
+        inRange.slice(1).forEach(enemy => {
+          this.damageDealt += enemy.takeDamage(flameDamage * 0.65, this.type, this);
+        });
+        spawnParticles(this.x, this.y, '#FF7043', 3, 1.1);
+        this.flamePulse = 4;
+      } else if (this.flamePulse > 0) {
+        this.flamePulse--;
       }
       return;
     }
@@ -1307,6 +1626,100 @@ class Tower {
       return;
     }
 
+    if (this.type === 'MINIGUN') {
+      this.timer++;
+      if (this.timer >= this.getEffectiveReloadTime()) {
+        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= r2; });
+        if (inRange.length > 0) {
+          inRange.sort((a, b) => distSq(a) - distSq(b));
+          const spreadReduction = Math.max(0, this.spreadReduction || 0);
+          const pelletCount = 4 + Math.floor((this.ammoCapacity || 0) / 2);
+          const poolSize = Math.max(1, Math.min(inRange.length, Math.ceil(inRange.length * Math.max(0.25, 0.75 - spreadReduction * 0.06))));
+          const pool = inRange.slice(0, poolSize);
+          const spreadArc = Math.max(0.035, 0.32 - spreadReduction * 0.025);
+          for (let i = 0; i < pelletCount; i++) {
+            const target = pool[Math.floor(Math.random() * pool.length)];
+            if (!target) continue;
+            const dist = Math.hypot(target.x - this.x, target.y - this.y);
+            const closeBonus = Math.max(0.45, 1 - (dist / Math.max(1, this.range)));
+            const damage = this.damage * (0.7 + closeBonus * 0.45) * (1 + spreadReduction * 0.02);
+            const baseAngle = Math.atan2(target.y - this.y, target.x - this.x);
+            const spreadAngle = (Math.random() - 0.5) * spreadArc;
+            const shotAngle = baseAngle + spreadAngle;
+            const shotDistance = Math.max(40, Math.min(this.range * 1.05, dist * (0.9 + Math.random() * 0.3)));
+            const shotX = this.x + Math.cos(shotAngle) * shotDistance;
+            const shotY = this.y + Math.sin(shotAngle) * shotDistance;
+            const bulletTarget = { x: shotX, y: shotY, alive: false };
+            projectiles.push(new Projectile(this.x, this.y, bulletTarget, damage, 11, this.type, 0, this));
+          }
+          playSFX('shoot');
+          this.timer = 0;
+        }
+      }
+      return;
+    }
+
+    if (this.isFarmer) {
+      this.timer++;
+      if (this.timer >= this.getEffectiveReloadTime()) {
+        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= r2; });
+        if (inRange.length > 0) {
+          if (this.targetMode === 'First') inRange.sort((a, b) => b.pathIndex - a.pathIndex);
+          else if (this.targetMode === 'Last') inRange.sort((a, b) => a.pathIndex - b.pathIndex);
+          else if (this.targetMode === 'Strongest') inRange.sort((a, b) => b.health - a.health);
+          else if (this.targetMode === 'Weakest') inRange.sort((a, b) => a.health - b.health);
+          else if (this.targetMode === 'Random') inRange.sort(() => Math.random() - 0.5);
+          else if (this.targetMode === 'Closest') inRange.sort((a, b) => distSq(a) - distSq(b));
+          else if (this.targetMode === 'Farthest') inRange.sort((a, b) => distSq(b) - distSq(a));
+          else if (this.targetMode === 'Highest Armor') inRange.sort((a, b) => b.armor - a.armor);
+
+          const ammo = FARMER_AMMO_TYPES[normalizeFarmerAmmoType(this.ammoType || this.chokeType || 'MODIFIED')] || FARMER_AMMO_TYPES.MODIFIED;
+          const pelletCount = ammo.pellets + Math.floor((this.level - 1) / 3);
+          const aimTarget = inRange[0];
+          const spreadArc = Math.max(0.03, ammo.spread * 1.15);
+
+          for (let i = 0; i < pelletCount; i++) {
+            if (!aimTarget) continue;
+            const dist = Math.hypot(aimTarget.x - this.x, aimTarget.y - this.y);
+            const closeBonus = Math.max(0.45, 1 - (dist / Math.max(1, this.range)));
+            const falloff = ammo.falloff || 1;
+            const ammoDamage = ammo.damageMult || 1;
+            const damage = this.damage * ammoDamage * (0.85 + closeBonus * 0.9) * Math.max(0.3, 1 - Math.max(0, dist - 90) / (this.range * falloff));
+            const baseAngle = Math.atan2(aimTarget.y - this.y, aimTarget.x - this.x);
+            const spreadAngle = (Math.random() - 0.5) * spreadArc;
+            const shotAngle = baseAngle + spreadAngle;
+            const shotDistance = Math.max(42, Math.min(this.range * 1.05, dist * (0.9 + Math.random() * 0.45)));
+            const shotX = this.x + Math.cos(shotAngle) * shotDistance;
+            const shotY = this.y + Math.sin(shotAngle) * shotDistance;
+            const pelletTarget = { x: shotX, y: shotY, alive: false };
+            const pellet = new Projectile(this.x, this.y, pelletTarget, damage, ammo.speed || 9, this.type, (ammo.splashRadius || 0) / TILE_SIZE, this);
+            pellet.farmerAmmo = ammo;
+            pellet.farmerAmmoType = normalizeFarmerAmmoType(this.ammoType || this.chokeType || 'MODIFIED');
+            pellet.pelletSize = ammo.pelletSize || 2;
+            projectiles.push(pellet);
+          }
+          playSFX('shoot');
+          this.timer = 0;
+        }
+      }
+      return;
+    }
+
+    if (this.isChemist) {
+      this.timer++;
+      if (this.timer >= this.getEffectiveReloadTime()) {
+        let inRange = enemies.filter(e => { if ((e.isCamo || e.isFlying) && this.upgrades.radar === 0) return false; return distSq(e) <= r2; });
+        if (inRange.length > 0) {
+          inRange.sort((a, b) => distSq(a) - distSq(b));
+          const target = inRange[0];
+          projectiles.push(new Projectile(this.x, this.y, target, this.damage, 5.5, this.type, 0, this));
+          playSFX('shoot');
+          this.timer = 0;
+        }
+      }
+      return;
+    }
+
     // SPLITTER tower removed — no special handling here.
 
     if (TOWER_TYPES[this.type].isTesla) {
@@ -1426,7 +1839,41 @@ class Tower {
   }
   draw() {
     if (this.engieBuffTimer > 0) { ctx.strokeStyle = '#FFC107'; ctx.lineWidth = 2; ctx.strokeRect(this.gx * TILE_SIZE + 1, this.gy * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2); }
-    if (selectedTower === this && !this.isFarm) { ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2); ctx.stroke(); }
+    if (selectedTower === this) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#FFFFFF';
+      ctx.shadowBlur = 10;
+      ctx.strokeRect(this.gx * TILE_SIZE + 1, this.gy * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      if (!this.isFarm) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    if (this.type === 'FLAME') {
+      const coneAngle = this.flameConeAngle != null ? this.flameConeAngle : -Math.PI / 2;
+      const coneRange = this.range;
+      const coneHalfAngle = Math.PI / 5;
+      const conePulse = this.flamePulse > 0 ? 0.85 : 0.35;
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 87, 34, ${conePulse})`;
+      ctx.strokeStyle = 'rgba(255, 167, 38, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.arc(this.x, this.y, coneRange, coneAngle - coneHalfAngle, coneAngle + coneHalfAngle);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
 
     if (this.isRail && this.hasSpotter && this.spotterLink) {
       ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
@@ -1569,12 +2016,26 @@ class Projectile {
       if (this.sourceTower) this.sourceTower.damageDealt += this.target.takeDamage(this.damage, sourceType, this.sourceTower);
     }
 
+    const farmerAmmo = this.type === 'FARMER' ? (this.farmerAmmo || FARMER_AMMO_TYPES[this.farmerAmmoType || 'MODIFIED']) : null;
+
+    const applyFarmerAmmoEffects = (enemy) => {
+      if (!farmerAmmo || !enemy || !enemy.alive) return;
+      if (farmerAmmo.slowTicks) {
+        enemy.slowTicks = Math.max(enemy.slowTicks || 0, farmerAmmo.slowTicks);
+        if (typeof farmerAmmo.slowFactor === 'number') enemy.slowFactor = Math.min(enemy.slowFactor || 1, farmerAmmo.slowFactor);
+      }
+      if (farmerAmmo.burnTicks) {
+        enemy.meltTicks = Math.max(enemy.meltTicks || 0, farmerAmmo.burnTicks);
+      }
+    };
+
     // Splash damage always explodes at the coordinates
     if (this.splash > 0) {
       spawnParticles(this.tx, this.ty, '#ff9800', 15);
       enemies.forEach(e => {
         if (e.alive && Math.hypot(e.x - this.tx, e.y - this.ty) <= this.splash * TILE_SIZE) {
           if (this.sourceTower) this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, sourceType, this.sourceTower);
+          applyFarmerAmmoEffects(e);
         }
       });
       
@@ -1604,6 +2065,10 @@ class Projectile {
     } else {
       spawnParticles(this.tx, this.ty, '#fff', 5);
     }
+
+    if (this.type === 'CHEMIST') {
+      acidPools.push(new AcidPool(this.tx, this.ty, TILE_SIZE * 1.2, Math.max(1, Math.floor(this.damage * 0.35)), 240, this.sourceTower));
+    }
   } else {
     // Check for collision with ANY enemy while traveling
     const pierceLevel = this.sourceTower && this.sourceTower.piercing ? this.sourceTower.piercing : 0;
@@ -1615,6 +2080,7 @@ class Projectile {
         const sourceType = this.sourceTower ? this.sourceTower.type : null;
         // Apply damage normally
         if (this.sourceTower) this.sourceTower.damageDealt += enemy.takeDamage(this.damage, sourceType, this.sourceTower);
+        applyFarmerAmmoEffects(enemy);
 
         // Splash damage if applicable
         if (this.splash > 0) {
@@ -1622,6 +2088,7 @@ class Projectile {
           enemies.forEach(e => {
             if (e.alive && Math.hypot(e.x - enemy.x, e.y - enemy.y) <= this.splash * TILE_SIZE) {
               if (this.sourceTower) this.sourceTower.damageDealt += e.takeDamage(this.damage * 0.5, sourceType, this.sourceTower);
+              applyFarmerAmmoEffects(e);
             }
           });
         } else {
@@ -1632,6 +2099,9 @@ class Projectile {
         if (this.hitEnemies.size >= maxPierce) {
           this.active = false;
           this.alive = false;
+          if (this.type === 'CHEMIST') {
+            acidPools.push(new AcidPool(this.x, this.y, TILE_SIZE, Math.max(1, Math.floor(this.damage * 0.25)), 180, this.sourceTower));
+          }
           return;
         }
       }
@@ -1646,10 +2116,15 @@ class Projectile {
   draw() {
     // Determine colors based on tower type
     let color = '#ffeb3b'; // default yellow
-    let size = 4;
+    let size = this.type === 'MINIGUN' ? 3 : 4;
+
+    if (this.type === 'FARMER' && this.farmerAmmo) {
+      color = this.farmerAmmo.color || color;
+      size = this.farmerAmmo.pelletSize || size;
+    }
     
     // Get the tower type's bullet color
-    if (this.type && TOWER_TYPES[this.type]) {
+    if (this.type && TOWER_TYPES[this.type] && !(this.type === 'FARMER' && this.farmerAmmo)) {
       let bulletColor = TOWER_TYPES[this.type].bullet;
       if (bulletColor) {
         // Map color names to hex values
@@ -1675,12 +2150,36 @@ class Projectile {
 
     // Draw the projectile
     if (color !== 'transparent') {
+      if (this.type === 'FARMER' && this.farmerAmmo && this.farmerAmmo.tracer) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x - (this.tx - this.x) * 0.12, this.y - (this.ty - this.y) * 0.12);
+        ctx.stroke();
+        ctx.restore();
+      }
       ctx.fillStyle = color;
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
-      ctx.fill();
+      if (this.type === 'MINIGUN') {
+        ctx.save();
+        ctx.shadowColor = '#FFFFFF';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, size + 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#222';
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }
@@ -1689,6 +2188,12 @@ class Projectile {
 function drawHoverPreview() {
   pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
   if (!buildType || hoverGx < 0 || hoverGy < 0 || (!grid[hoverGy] || grid[hoverGy][hoverGx] !== 0)) return;
+  // Prevent showing preview (and prevent builds) on fixed-map 'X' (no-build) tiles
+  const curMap = MAP_DATA[currentMapIndex];
+  if (curMap && curMap.type === 'FIXED') {
+    const cell = curMap.layout && curMap.layout[hoverGy] ? curMap.layout[hoverGy][hoverGx] : null;
+    if (cell === 'X') return;
+  }
   const px = hoverGx * TILE_SIZE + TILE_SIZE / 2, py = hoverGy * TILE_SIZE + TILE_SIZE / 2, t  = TOWER_TYPES[buildType];
   pCtx.fillStyle = 'rgba(255,255,255,0.07)'; pCtx.fillRect(hoverGx * TILE_SIZE, hoverGy * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   if (!t.isFarm) { pCtx.strokeStyle = t.color + '99'; pCtx.lineWidth = 1.5; pCtx.setLineDash([4, 4]); pCtx.beginPath(); pCtx.arc(px, py, t.range, 0, Math.PI * 2); pCtx.stroke(); pCtx.setLineDash([]); }
@@ -1760,7 +2265,23 @@ window.startEndlessMode = (difficulty) => {
   if (typeof updateShopAvailability === 'function') updateShopAvailability();
 };
 window.returnToMenu = () => { document.getElementById('game-root').style.display = 'none'; document.getElementById('mainMenu').style.display = 'flex'; isPaused = true; };
-window.buyResearch = (type) => { const costs = { bounty: 500, piercing: 600, interest: 750 }; if (gold >= costs[type]) { gold -= costs[type]; if (type === 'bounty') research.bounty += 5; if (type === 'piercing') research.piercing += 2; if (type === 'interest') research.interest += 0.02; const btn = document.getElementById('res_' + type); if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; } } };
+window.startSandboxMode = () => {
+  gameMode = 'SANDBOX';
+  gameDifficulty = 'NORMAL';
+  currentMapIndex = 0; // Use Map 1 (random) for sandbox
+  document.getElementById('mainMenu').style.display = 'none';
+  document.getElementById('game-root').style.display = 'flex';
+  const m = MAP_DATA[0];
+  COLS = m.cols; ROWS = m.rows;
+  canvas.width = COLS * TILE_SIZE; canvas.height = ROWS * TILE_SIZE;
+  pCanvas.width = COLS * TILE_SIZE; pCanvas.height = ROWS * TILE_SIZE;
+  setupMap(m);
+  restartGame();
+  gold = 999999; // Unlimited money
+  lives = 999; // Can't lose
+  if (typeof updateShopAvailability === 'function') updateShopAvailability();
+};
+window.buyResearch = (type) => { const costs = { bounty: 500, piercing: 600, interest: 750 }; const canAfford = gameMode === 'SANDBOX' || gold >= costs[type]; if (canAfford) { if (gameMode !== 'SANDBOX') gold -= costs[type]; if (type === 'bounty') research.bounty += 5; if (type === 'piercing') research.piercing += 2; if (type === 'interest') research.interest += 0.02; const btn = document.getElementById('res_' + type); if (btn) { btn.disabled = true; btn.innerText += " [MAX]"; } } };
 window.setBuildType = t => { buildType = buildType === t ? null : t; selectedTower = null; selectedEnemy = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); if (buildType) { const btn = document.getElementById('btn_' + buildType); if (btn) btn.classList.add('active-build'); } updateSelectionUI(); drawHoverPreview(); };
 
 // Load a different map while in-game without returning to main menu
@@ -2044,6 +2565,7 @@ window.upgradeTower = (stat) => {
 
     // Special failsafes for one-off/capped upgrades
     if (stat === 'radar' && (t.upgrades.radar >= 1 || t.type === 'SNIPER')) return;
+    if (t.type === 'FLAME' && stat === 'range') return;
     if (stat === 'lasers' && (t.upgrades.lasers || 1) >= 5) return;
     if (stat === 'chainAmount' && (t.upgrades.chainAmount || 1) >= 5) return;
     // Cap specialized upgrades at 20
@@ -2162,8 +2684,8 @@ window.toggleSpeed = () => { gameSpeed = gameSpeed === 1 ? 2 : 1; const btn = do
 window.toggleMute = () => { const muteBtn = document.getElementById('muteBtn'); if (isMusicPlaying) { bgMusic.pause(); isMusicPlaying = false; if (muteBtn) { muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; } } else { bgMusic.play().catch(err => { console.error("Browser blocked audio:", err); }); isMusicPlaying = true; if (muteBtn) { muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; } } };
 
 window.restartGame = () => {
-  gold = 10000; lives = 20 + (metaTech.lives * 5); waveNumber = 0; enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0;
-  enemies = []; towers = []; projectiles = []; particles = []; upgradeEffects = []; traps = [];
+  gold = 7000; lives = 20 + (metaTech.lives * 5); waveNumber = 0; enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0;
+  enemies = []; towers = []; projectiles = []; particles = []; upgradeEffects = []; traps = []; acidPools = []; farmerPellets = []; minigunPellets = [];
   research = { bounty: 0, piercing: 0, interest: 0.01 };
   selectedTower = null; selectedEnemy = null; buildType = null; isPaused = false; isWaveActive = false; isGameOver = false; gameSpeed = 1; frameCount = 0; research = { bounty: 0, piercing: 0, interest: 0.01 };
   gameStartTime = Date.now();
@@ -2190,22 +2712,28 @@ canvas.addEventListener('mousedown', e => {
     if (buildType === 'FARM' && towers.filter(t => t.isFarm).length >= 8) { alert("Maximum of 8 Farms allowed!"); buildType = null; document.querySelectorAll('.shop-group button').forEach(b => b.classList.remove('active-build')); updateSelectionUI(); drawHoverPreview(); return; }
     const cost = getTowerCost(buildType);
     const freeBuildActive = isAdminTestMode && adminSettings.freeBuild;
-    if ((freeBuildActive || gold >= cost) && grid[gy] && grid[gy][gx] === 0) {
+    // Block builds on 'X' (purple no-build) tiles for fixed maps
+    const curMap = MAP_DATA[currentMapIndex];
+    if (curMap && curMap.type === 'FIXED') {
+      const layoutCell = curMap.layout && curMap.layout[gy] ? curMap.layout[gy][gx] : null;
+      if (layoutCell === 'X') return;
+    }
+    if ((freeBuildActive || gameMode === 'SANDBOX' || gold >= cost) && grid[gy] && grid[gy][gx] === 0) {
       if ((gx === startPos.x && gy === startPos.y) || (gx === endPos.x && gy === endPos.y)) return;
       grid[gy][gx] = 1;
       const p = MAP_DATA[currentMapIndex].type === "FIXED"
         ? (MAP_DATA[currentMapIndex].fixedPaths && MAP_DATA[currentMapIndex].fixedPaths.length > 0 ? MAP_DATA[currentMapIndex].fixedPaths[0] : MAP_DATA[currentMapIndex].fixedPath)
         : findPath();
       if (p || TOWER_TYPES[buildType].isFarm) {
-        if (!freeBuildActive) gold -= cost;
+        if (!freeBuildActive && gameMode !== 'SANDBOX') gold -= cost;
         towers.push(new Tower(gx, gy, buildType));
-        if (!freeBuildActive) runStats.spent += cost;
+        if (!freeBuildActive && gameMode !== 'SANDBOX') runStats.spent += cost;
         runStats.towerTypes.add(buildType);
         runStats.maxTowers = Math.max(runStats.maxTowers, towers.length);
         recalculateAllPaths();
       } else grid[gy][gx] = 0;
       drawHoverPreview();
-    } else if (gold < cost) {
+    } else if (gameMode !== 'SANDBOX' && gold < cost) {
       const gD = document.getElementById('goldDisplay'); gD.style.color = 'red'; setTimeout(() => gD.style.color = '#ffd700', 300);
     }
   } else { selectedTower = null; selectedEnemy = null; updateSelectionUI(); }
@@ -2273,6 +2801,7 @@ function tick() {
         // Spawn probabilities NOW ALIGNED with getWaveComposition()
         if(waveNumber>15&&r>0.85) type='SWARM';
         else if(waveNumber>12&&r>0.8) type='CARRIER';
+        else if(waveNumber>12&&r>0.82) type='DESPERATOR';
         else if(waveNumber>10&&r>0.75) type='CHAMELEON';
         else if(waveNumber>14&&r>0.72) type='REVERSECHAMELEON';
         else if(waveNumber>18&&r>0.7) type='ARMORED';
@@ -2312,6 +2841,9 @@ function tick() {
       return e.alive;
     });
   projectiles = projectiles.filter(p => { p.update(); return p.alive; });
+  farmerPellets = farmerPellets.filter(pellet => { pellet.update(); return pellet.life > 0; });
+  minigunPellets = minigunPellets.filter(pellet => { pellet.update(); return pellet.life > 0; });
+  acidPools = acidPools.filter(pool => { pool.update(); return pool.life > 0; });
   traps = traps.filter(tr => { tr.update(); return tr.alive; });
   particles = particles.filter(p => { p.update(); return p.l > 0; });
   upgradeEffects = upgradeEffects.filter(e => { e.update(); return e.life > 0; });
@@ -2328,7 +2860,7 @@ function update() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (bgCanvas.width > 0) ctx.drawImage(bgCanvas, 0, 0);
 
-    traps.forEach(tr => tr.draw()); towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw()); particles.forEach(p => p.draw()); upgradeEffects.forEach(e => e.draw());
+    traps.forEach(tr => tr.draw()); acidPools.forEach(pool => pool.draw()); towers.forEach(t => t.draw()); enemies.forEach(e => e.draw()); projectiles.forEach(p => p.draw()); minigunPellets.forEach(pellet => pellet.draw()); farmerPellets.forEach(pellet => pellet.draw()); particles.forEach(p => p.draw()); upgradeEffects.forEach(e => e.draw());
     drawAdminPathOverlay();
 
     if (isAdminTestMode) {
@@ -2367,6 +2899,7 @@ function update() {
 try { loadMeta(); } catch (e) { console.error('loadMeta failed:', e); }
 try { loadAchievements(); } catch (e) { console.error('loadAchievements failed:', e); }
 try { loadSettings(); } catch (e) { console.error('loadSettings failed:', e); }
+try { applyTowerButtonColors(); } catch (e) { console.error('applyTowerButtonColors failed:', e); }
 update();
 
 // ==========================================
@@ -2449,7 +2982,9 @@ window.saveGame = (slot) => {
             gx: t.gx, gy: t.gy, type: t.type, level: t.level, targetMode: t.targetMode, totalSpent: t.totalSpent,
             damageDealt: t.damageDealt || 0, income: t.income, totalGenerated: t.totalGenerated,
             maxConstructs: t.maxConstructs, upgrades: t.upgrades, meltLevel: t.meltLevel,
-            slowLevel: t.slowLevel, baseDamage: t.baseDamage, baseRange: t.baseRange, baseReload: t.baseReload, baseDuration: t.baseDuration
+          slowLevel: t.slowLevel, baseDamage: t.baseDamage, baseRange: t.baseRange, baseReload: t.baseReload, baseDuration: t.baseDuration,
+          chokeType: t.chokeType,
+          ammoType: t.ammoType
         })),
         traps: traps.map(tr => ({ x: tr.x, y: tr.y, damage: tr.damage, towerGx: tr.tower ? tr.tower.gx : null, towerGy: tr.tower ? tr.tower.gy : null }))
     };
@@ -2467,7 +3002,7 @@ window.loadGame = (slot) => {
 
     closeSaveModal(); startGame(state.map);
 
-    enemies = []; projectiles = []; particles = []; traps = []; towers = [];
+    enemies = []; projectiles = []; particles = []; traps = []; towers = []; acidPools = []; farmerPellets = []; minigunPellets = [];
     gold = state.gold; lives = state.lives; waveNumber = state.waveNumber;
     upgradeEffects = [];
     research = { bounty: state.research?.bounty || 0, piercing: state.research?.piercing || 0, interest: state.research?.interest || 0.01 };
@@ -2487,6 +3022,9 @@ window.loadGame = (slot) => {
         if(data.upgrades) t.upgrades = data.upgrades; if(data.meltLevel) t.meltLevel = data.meltLevel; if(data.slowLevel) t.slowLevel = data.slowLevel;
         if (data.baseDamage) t.baseDamage = data.baseDamage; if (data.baseRange) t.baseRange = data.baseRange;
         if (data.baseReload) t.baseReload = data.baseReload; if (data.baseDuration) t.baseDuration = data.baseDuration;
+        if (data.ammoType) t.ammoType = normalizeFarmerAmmoType(data.ammoType);
+        else if (data.chokeType) t.ammoType = normalizeFarmerAmmoType(data.chokeType);
+        t.chokeType = t.ammoType;
         if (grid[data.gy] && grid[data.gy][data.gx] !== undefined) grid[data.gy][data.gx] = 1;
         towers.push(t);
     });
@@ -2709,6 +3247,10 @@ function generateDailyChallenge() {
     .map(c => ({ ...c, id: `${dailyChallengeState.dayKey}_${c.key}` }));
 }
 
+function getDailyChallengeReward(challenge) {
+  return Math.max(1, Math.floor(challenge.reward * DAILY_CHALLENGE_TOKEN_MULTIPLIER));
+}
+
 window.claimDailyChallenge = (challengeId) => {
   ensureDailyChallengeState();
   const challenge = generateDailyChallenge().find(c => c.id === challengeId);
@@ -2722,7 +3264,7 @@ window.claimDailyChallenge = (challengeId) => {
     return;
   }
   dailyChallengeState.claimed[challengeId] = true;
-  metaTech.tokens += challenge.reward;
+  metaTech.tokens += getDailyChallengeReward(challenge);
   saveMeta();
   saveAchievements();
   showDailyChallenges();
@@ -2743,7 +3285,7 @@ function showDailyChallenges() {
       <h4 style="color:#FFD700; margin-bottom:5px;">${ch.name}</h4>
       <p style="font-size:12px; color:#ddd; margin-bottom:10px;">${ch.desc}</p>
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:#FFD700; font-weight:bold;">+${ch.reward} Tokens</span>
+        <span style="color:#FFD700; font-weight:bold;">+${getDailyChallengeReward(ch)} Tokens</span>
         <button class="sys-btn" style="background:${btnStyle}!important; padding:5px 15px; font-size:12px;" ${claimed ? 'disabled' : ''} onclick="claimDailyChallenge('${ch.id}')">${btnText}</button>
       </div>
     </div>`;
