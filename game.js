@@ -702,7 +702,7 @@ const ENEMY_TYPES = {
 
 const WAVE_COLORS = { NORMAL: '#9C27B0', RUNNER: '#FFEB3B', TANK: '#8B4513', FLYER: '#E0E0E0', GHOST: '#9E9E9E', HEALER: '#4CAF50', CARRIER: '#607D8B', SHIELD: '#00BCD4', CHAMELEON: '#E91E63', SLIME: '#8BC34A', BOSS: '#FF0000', ARMORED: '#4A4A4A', INVISIBLE: '#CCCCCC', SPEEDDEM: '#FF1744', REGEN: '#76FF03', SWARM: '#FF9800', DESPERATOR: '#FF4081', Achillies: '#FFFFFF' };
 
-let gold=300, lives=20, waveNumber=0, buildType=null, selectedTower=null, selectedEnemy=null, enemiesLeftToSpawn=0, spawnTimer=0, waveCooldown=0;
+let gold=500, lives=20, waveNumber=0, buildType=null, selectedTower=null, selectedEnemy=null, enemiesLeftToSpawn=0, spawnTimer=0, waveCooldown=0;
 let isPaused=true, isWaveActive=false, isGameOver=false, gameSpeed=1, hoverGx=-1, hoverGy=-1, frameCount=0;
 let autoStartWaves = false;
 window.toggleAutoStart = (val) => autoStartWaves = val;
@@ -2684,7 +2684,7 @@ window.toggleSpeed = () => { gameSpeed = gameSpeed === 1 ? 2 : 1; const btn = do
 window.toggleMute = () => { const muteBtn = document.getElementById('muteBtn'); if (isMusicPlaying) { bgMusic.pause(); isMusicPlaying = false; if (muteBtn) { muteBtn.innerText = "🎵 PLAY MUSIC"; muteBtn.style.background = ""; } } else { bgMusic.play().catch(err => { console.error("Browser blocked audio:", err); }); isMusicPlaying = true; if (muteBtn) { muteBtn.innerText = "🎵 MUTE MUSIC"; muteBtn.style.background = "#4CAF50"; } } };
 
 window.restartGame = () => {
-  gold = 7000; lives = 20 + (metaTech.lives * 5); waveNumber = 0; enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0;
+  gold = 500; lives = 20 + (metaTech.lives * 5); waveNumber = 0; enemiesLeftToSpawn = 0; spawnTimer = 0; waveCooldown = 0;
   enemies = []; towers = []; projectiles = []; particles = []; upgradeEffects = []; traps = []; acidPools = []; farmerPellets = []; minigunPellets = [];
   research = { bounty: 0, piercing: 0, interest: 0.01 };
   selectedTower = null; selectedEnemy = null; buildType = null; isPaused = false; isWaveActive = false; isGameOver = false; gameSpeed = 1; frameCount = 0; research = { bounty: 0, piercing: 0, interest: 0.01 };
